@@ -1,0 +1,8 @@
+fastapi
+fastembed
+langgraph
+langgraph-checkpoint-sqlite
+langchain-community
+langchain-ollama
+python-dotenv
+uvicorn

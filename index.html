@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat LangGraph</title>
+    <!-- Carga de la librería para parsear Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 700px; margin: 20px auto; padding: 0 10px; }
+        #messages { height: 75vh; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+        .message { margin-bottom: 15px; padding: 8px 12px; border-radius: 5px; }
+        .user { background: #e3f2fd; }
+        .assistant { background: #f5f5f5; }
+        /* Ajuste para que los párrafos dentro del Markdown renderizado no metan márgenes excesivos */
+        .message p { margin: 0 0 8px 0; }
+        .message p:last-child { margin-bottom: 0; }
+        #input-form { display: flex; gap: 10px; }
+        #user-input { flex: 1; padding: 8px; }
+    </style>
+</head>
+<body>
+
+<div id="messages"></div>
+
+<form id="input-form">
+    <input type="text" id="user-input" placeholder="Escribe un mensaje..." autocomplete="off" required>
+    <button type="submit" id="send-btn">Enviar</button>
+</form>
+
+<script>
+    const form = document.getElementById('input-form');
+    const input = document.getElementById('user-input');
+    const messagesContainer = document.getElementById('messages');
+    const sendBtn = document.getElementById('send-btn');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+
+        // 1. Mostrar mensaje del usuario
+        appendMessage(text, 'user');
+        input.value = '';
+        input.disabled = true;
+        sendBtn.disabled = true;
+
+        // 2. Crear contenedor para la respuesta del asistente
+        const assistantMessageDiv = appendMessage('', 'assistant');
+        let fullResponseText = '';
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_input: text })
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop(); 
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const dataStr = line.replace('data: ', '').trim();
+                        if (dataStr === '[DONE]') break;
+
+                        const data = JSON.parse(dataStr);
+                        
+                        // Acumulamos el texto y parseamos a Markdown en tiempo real
+                        fullResponseText += data.content;
+                        assistantMessageDiv.innerHTML = marked.parse(fullResponseText);
+                        
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
+                }
+            }
+        } catch (error) {
+            assistantMessageDiv.textContent = 'Error de conexión con el servidor.';
+        } finally {
+            input.disabled = false;
+            sendBtn.disabled = false;
+            input.focus();
+        }
+    });
+
+    function appendMessage(text, sender) {
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('message', sender);
+        // Si hay texto inicial (mensaje del usuario), lo renderizamos también como Markdown
+        if (text) {
+            msgDiv.innerHTML = marked.parse(text);
+        }
+        messagesContainer.appendChild(msgDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        return msgDiv;
+    }
+</script>
+
+</body>
+</html>

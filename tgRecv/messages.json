@@ -1,0 +1,6 @@
+{
+    "http_error": "Error de comunicación con el servidor backend.",
+    "no_content": "No he recibido contenido del modelo.",
+    "unexpected": "Ocurrió un error inesperado.",
+    "welcome": "¡Hola! ¿En qué puedo ayudarte?"
+}
