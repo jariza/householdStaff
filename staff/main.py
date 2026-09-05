@@ -8,7 +8,7 @@ from langchain_community.embeddings import FastEmbedEmbeddings
 
 from engines import DebugEngine, LLMEngine
 from graph import build_graph
-from httpHandlers import chat_router, consolidate_memory_router
+from httpHandlers import chat_router, consolidate_memory_router, long_term_memory_crud_router
 from tools import buscar_memoria_jardinero, buscar_memoria_mayordomo, encender_luz_jardin, guardar_o_actualizar_memoria_mayordomo, guardar_o_actualizar_memoria_jardinero
 from persistence import create_persistence_resources
 
@@ -59,8 +59,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=['OPTIONS', 'POST']
+    allow_origins = ["*"],
+    allow_methods = ['OPTIONS', 'POST', 'GET', 'PUT', 'DELETE']
 )
 app.include_router(chat_router)
 app.include_router(consolidate_memory_router)
+app.include_router(long_term_memory_crud_router)
