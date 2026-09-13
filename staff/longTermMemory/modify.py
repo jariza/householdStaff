@@ -1,3 +1,4 @@
+from httpx import HTTPError, TimeoutException
 from langgraph.prebuilt import InjectedStore
 from langgraph.store.base import BaseStore
 from langchain_core.prompts import ChatPromptTemplate
@@ -27,13 +28,13 @@ def store_or_update_long_term_memory(new_info: str, memory_namespace, ollama_url
         previous_info = current_memory_results[0].value["texto"]
     
         logger.info("Contacting Ollama in %s", ollama_url)
-        llm_rpi = ChatOllama(
+        llm_ollama = ChatOllama(
             base_url = ollama_url,
             model = "qwen2.5:1.5b",
             temperature = 0.0 # We just want data to be merged, nothing new to be added
         )
 
-        structured_llm = llm_rpi.with_structured_output(LongTermMemoryMerge)
+        structured_llm = llm_ollama.with_structured_output(LongTermMemoryMerge)
 
         system_prompt = """
         Eres un módulo de gestión de memoria a largo plazo.
@@ -50,19 +51,24 @@ def store_or_update_long_term_memory(new_info: str, memory_namespace, ollama_url
             ("user", "MEMORIA EXISTENTE:\n{current_memory}\n\nNUEVA INFORMACIÓN:\n{new_info}")
         ])
 
-        merge_chain = memory_update_prompt_template | structured_llm
+        merge_chain = memory_update_prompt_template | structured_llm.with_retry()
 
-        res = merge_chain.invoke({
-            "current_memory": previous_info,
-            "new_info": new_info
-        })
+        try:
+            res = merge_chain.invoke({
+                "current_memory": previous_info,
+                "new_info": new_info
+            })
+            updated_text = res.updated_memory
+        except (HTTPError, TimeoutException) as e:
+            logger.error("Ollama service unavailable at %s: %s. Applying fallback.", ollama_url, e)
+            updated_text = f"{previous_info} [Info adicional]: {new_info}"
 
-        logger.debug("Updated memory: %s", res.updated_memory)
+        logger.debug("Updated memory: %s", updated_text)
         
         store.put(
             namespace = memory_namespace,
             key = found_key,
-            value = {"texto": res.updated_memory}
+            value = {"texto": updated_text}
         )
     else:
         logger.debug("Looks new")
