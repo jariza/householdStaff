@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from langgraph.config import get_stream_writer
 from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
@@ -35,6 +36,7 @@ class GardenerAgent(BaseAgent):
     """).strip()
 
     # Local state used in the subgraph
+    # This state is not persisted so we don't need to take care of cleaning memories_to_update
     class State(TypedDict):
         messages: Annotated[list[BaseMessage], add_messages]
         memories_to_update: Annotated[list[LongTermMemoryUpdate], add]
@@ -88,6 +90,12 @@ class GardenerAgent(BaseAgent):
 
         # We use HumanMessage to model some agent different than current one, name specifies which one. AIMessage models current agent.
         subgraph_result = self.subgraph.invoke({"messages": [HumanMessage(content=last_butler_msg, name="butler")]})
+
+        # Transform memory_to_update into customs so tasks are sent to background tasks
+        writer = get_stream_writer()
+        for memory_update in subgraph_result.get("memories_to_update", []):
+            writer({"type": "memory_update", "agent": memory_update["agent"], "new_info": memory_update["new_info"]})
+
         final_msg = subgraph_result["messages"][-1].content
         logger.debug("Final message from gardener: %s", final_msg)
 

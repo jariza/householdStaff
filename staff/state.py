@@ -29,11 +29,6 @@ def log_agent_state(state: AgentsState, title: str):
             name = getattr(msg, "name", None) or "-"
             lines.append(f"  [{i}] {icon} {message_type} de {name}: {content}")
 
-    messages = state.get("memories_to_update")
-    lines.append(f"memories_to_update ({len(messages)} items)")
-    for i, msg in enumerate(messages):
-        lines.append(f"  [{i}] {msg['agent']}: {msg['new_info']}")
-
     next_recipient = state.get("next_recipient")
     lines.append(f"next_recipient: {next_recipient!r}")
 
@@ -51,7 +46,6 @@ class AgentsState(TypedDict):
     messagesButler: Annotated[list[BaseMessage], add_messages]
     messagesGardener: Annotated[list[BaseMessage], add_messages]
     next_recipient: str | None
-    memories_to_update: Annotated[list[LongTermMemoryUpdate], add]
 
 # Return status message older than 24h
 def retrieve_older_than_24h(messages: list) -> list:

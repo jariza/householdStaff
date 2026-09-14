@@ -46,8 +46,7 @@ async def chat_endpoint(request: Request, data: ChatRequest, background_tasks: B
                 # First time we run the graph
                 initial_state = AgentsState(
                     messagesButler=[],
-                    messagesGardener=[],
-                    memories_to_update=[]
+                    messagesGardener=[]
                 )
                 await graph.ainvoke(initial_state, config)
 
@@ -59,26 +58,25 @@ async def chat_endpoint(request: Request, data: ChatRequest, background_tasks: B
 
             # Run graph and return the answer
             butler_messages: list[str] = []
-            async for chunk in graph.astream(Command(resume=user_input_to_send_to_agent), config=config, stream_mode="updates"):
-                for node_name, updates in chunk.items():
-                    if node_name == "butler" and "messagesButler" in updates:
-                        last_msg = updates['messagesButler'][-1].content
-                        butler_messages.append(last_msg)
-                        data_payload = json.dumps({"content": last_msg})
-                        yield f"data: {data_payload}\n\n"
+            async for chunk in graph.astream(Command(resume=user_input_to_send_to_agent), config=config, stream_mode=["updates", "custom"], version="v2"):
+                # We are using custom chunks (ephemeral) to notify memory_updates
+                if chunk["type"] == "custom":
+                    chunk_data = chunk["data"]
+                    if chunk_data.get("type") == "memory_update":
+                        logger.info("Memory update to sent to background (from %s): %s", chunk_data.get("agent"), chunk_data.get("new_info"))
+                        background_tasks.add_task(store_or_update_long_term_memory, chunk_data.get("new_info"), (data.user_id, chunk_data.get("agent")), request.app.state.local_ollama_url, store)
+                if chunk["type"] == "updates":
+                    for node_name, updates in chunk["data"].items():
+                        if node_name == "butler" and "messagesButler" in updates:
+                            last_msg = updates['messagesButler'][-1].content
+                            butler_messages.append(last_msg)
+                            data_payload = json.dumps({"content": last_msg})
+                            yield f"data: {data_payload}\n\n"
 
             # If this request came from a cronjob and the LLM generated a response, send it as a notification
             if data.request_source == "cronjob" and butler_messages:
                 full_response = "\n\n".join(butler_messages)
                 background_tasks.add_task(dispatch_notification, full_response, request.app.state.notifier_url)
-
-            # Retrieve the full state so we can access the full list of pending memories to update, in case there is some backlog
-            final_state = await graph.aget_state(config)
-            for memory_update in final_state.values.get("memories_to_update", []):
-                logger.info("Memory update to sent to background: %s", memory_update)
-                background_tasks.add_task(store_or_update_long_term_memory, memory_update["new_info"], (data.user_id, memory_update["agent"]), request.app.state.local_ollama_url, store)
-            # Clean list of pending memory updates
-            await graph.aupdate_state(config, {"memories_to_update": Overwrite([])})
 
             yield "data: [DONE]\n\n"
 

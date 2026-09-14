@@ -1,4 +1,5 @@
 from langchain_core.messages import ToolMessage
+from langgraph.config import get_stream_writer
 from langgraph.types import Command
 from langchain_core.tools import tool, InjectedToolCallId
 from typing import Annotated
@@ -15,14 +16,16 @@ def guardar_o_actualizar_memoria_mayordomo(texto_nuevo: str, tool_call_id: Annot
 
     # The tool will only request the memory to be updated, the request will be queued as a background task
 
+    # Butler is in the main graph so it uses custom events in this tool
+    writer = get_stream_writer()
+    writer({
+        "type": "memory_update",
+        "agent": "butler",
+        "new_info": texto_nuevo
+    })
+
     return Command(
         update={
-            "memories_to_update": [
-                {
-                    "agent": "butler",
-                    "new_info": texto_nuevo
-                }
-            ],
             "messagesButler": [
                 ToolMessage(
                     content = "Memoria marcada para actualizar.",
