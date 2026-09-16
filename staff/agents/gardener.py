@@ -14,11 +14,17 @@ from textwrap import dedent
 from typing import Annotated, TypedDict
 from .base import BaseAgent
 from .commonPrompts import PRELOADED_MEM_USAGE
-from state import AgentsState, log_agent_state, LongTermMemoryUpdate
+from state import AgentsState, log_agent_state
 
 logger = logging.getLogger(__name__)
 
+class LongTermMemoryUpdate(TypedDict):
+    agent: str
+    new_info: str
+
 class GardenerAgent(BaseAgent):
+    description = "Especialista en jardinería, plantas y cuidado del jardín."
+
     # This agent uses a subgraph with two nodes:
     # - agent itself
     # - tools node
@@ -43,15 +49,13 @@ class GardenerAgent(BaseAgent):
 
     # Initialization
     # Adds tools and subgraph to the base
-    # tools, list of tool to bind the the agent
     def __init__(self, engine, tools):
-        super().__init__(engine)
-        self.tools = tools
+        super().__init__(engine, tools)
         self.subgraph = self._build_subgraph()
 
     # Send the message to the answer machine (aka LLM)
     def _answer(self, messages):
-        return self.engine.gardener(messages)
+        return self.engine.gardener(messages, self.tools)
 
     # Agent node for the subgraph
     # state, internal state
@@ -65,7 +69,7 @@ class GardenerAgent(BaseAgent):
         system_prompt = self.systemPrompt.format(timedate = f"{datetime.now(timezone.utc):%A, %d de %B de %Y - %H:%M UTC}") + PRELOADED_MEM_USAGE.format(mem=preloaded_mem)
         logger.debug("System prompt: %s", system_prompt)
         answer = self._answer([SystemMessage(content = system_prompt)] + state["messages"])
-        logger.debug("Answer: %s", answer)
+        logger.debug("Answer: %r", answer)
 
         return {"messages": [answer]}
 

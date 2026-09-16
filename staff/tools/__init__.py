@@ -1,5 +1,6 @@
 from .buscar_memoria_mayordomo import buscar_memoria_mayordomo
 from .buscar_memoria_jardinero import buscar_memoria_jardinero
+from .delegar_a_agente import delegar_a_agente
 from .encender_luz_jardin import encender_luz_jardin
 from .guardar_o_actualizar_memoria_mayordomo import guardar_o_actualizar_memoria_mayordomo
 from .guardar_o_actualizar_memoria_jardinero import guardar_o_actualizar_memoria_jardinero

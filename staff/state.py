@@ -2,7 +2,6 @@ from datetime import datetime, timedelta, timezone
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage
 import logging
-from operator import add
 from typing import Annotated, TypedDict
 
 logger = logging.getLogger(__name__)
@@ -35,11 +34,6 @@ def log_agent_state(state: AgentsState, title: str):
     lines.append("=" * 54)
 
     logger.debug("%s", "\n".join(lines))
-
-# Used for queuing long term memory updates
-class LongTermMemoryUpdate(TypedDict):
-    agent: str
-    new_info: str
 
 # States for agents and who is going to receive the next message (next_recipient)
 class AgentsState(TypedDict):

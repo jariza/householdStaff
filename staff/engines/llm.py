@@ -1,11 +1,11 @@
 from langchain_core.messages import AIMessage
-from .common import AgentResponse, AnswerEngine
+from .common import AnswerEngine
 
 # Engine with real LLMs
 class LLMEngine(AnswerEngine):
 
-    def butler(self, messages) -> AgentResponse:
+    def butler(self, messages: list, tools: list | None = None) -> AIMessage:
         return
 
-    def gardener(self, messages) -> AIMessage:
+    def gardener(self, messages: list, tools: list | None = None) -> AIMessage:
         return

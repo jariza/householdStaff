@@ -35,7 +35,7 @@ def route_after_butler(state: AgentsState) -> str:
 # gardener_tools, tools used by gardener
 def build_graph(engine, butler_tools, gardener_tools) -> StateGraph:
     # Agents definition
-    butler = ButlerAgent(engine)
+    butler = ButlerAgent(engine, butler_tools)
     gardener = GardenerAgent(engine, gardener_tools)
     user=UserInput()
 

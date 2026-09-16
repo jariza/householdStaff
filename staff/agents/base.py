@@ -8,11 +8,27 @@ logger = logging.getLogger(__name__)
 
 # Base class for generic agent
 class BaseAgent:
+    # Description of the agent, to be send to a LLM, required only if delegable is True
+    description: str = ""
+    # Can an agent delegate on this one?
+    delegable: bool = True
+
+    @classmethod
+    def delegatable_agents(cls):
+        delegatables = {}
+        for agent_class in BaseAgent.__subclasses__():
+            if agent_class.delegable:
+                agent_name = agent_class.__name__.removesuffix("Agent")
+                delegatables[agent_name] = agent_class.description
+        return delegatables
+
     # Initialization
     # engine: answer engine (aka LLM)
-    def __init__(self, engine):
+    # tools, list of tool to bind the the agent
+    def __init__(self, engine, tools):
         self.agentName = type(self).__name__ # The name of the derived class is the name of the agent
         self.engine = engine
+        self.tools = tools
 
     # Search into the long term memory
     # message: message to search

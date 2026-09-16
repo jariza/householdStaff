@@ -1,51 +1,61 @@
 from langchain_core.messages import AIMessage
 import logging
 import uuid
-from .common import AgentResponse, AnswerEngine
+from .common import AnswerEngine
 
 logger = logging.getLogger(__name__)
 
 # Engine with predictable answers
 class DebugEngine(AnswerEngine):
 
-    def butler(self, message) -> AgentResponse:
-        last_message = message[-1].content
+    def butler(self, messages: list, tools: list | None = None) -> AIMessage:
+        last_message = messages[-1].content
         logger.debug("Last message in butler status: %s", last_message)
 
         if last_message == "base":
-            return AgentResponse(
-                recipient = "user",
-                message = "Respuestas sin que intervengan otros agentes."
+            return AIMessage(
+                content = "Respuestas sin que intervengan otros agentes."
             )
         elif last_message == "jardinero":
-            return AgentResponse(
-                recipient = "gardener",
-                message = "Consulta sobre el jardín."
+            return AIMessage(
+                content="Voy a consultar este tema con el jardinero.",
+                tool_calls=[{
+                    "name": "delegar_a_agente",
+                    "args": {"agente_al_que_delegar": "gardener", "mensaje_para_agente_delegado": "Consulta sobre el jardín."},
+                    "id": str(uuid.uuid4())
+                }]
             )
         elif last_message == "tool" or last_message == "Los focos de la zona 'ZONABUTLERMIXTO' del jardin estan encendidos.":
-            return AgentResponse(
-                recipient = "gardener",
-                message = "encender luz jardin"
+            return AIMessage(
+                content="Delego el encendido de luz al jardinero.",
+                tool_calls=[{
+                    "name": "delegar_a_agente",
+                    "args": {"agente_al_que_delegar": "gardener", "mensaje_para_agente_delegado": "encender luz jardin"},
+                    "id": str(uuid.uuid4())
+                }]
             )
         elif last_message == "memoriaB":
-            return AgentResponse(
-                recipient = "butler",
-                message = "Voy a actualizar la memoria",
-                tool_calls = [{
+            return AIMessage(
+                content="Voy a actualizar la memoria",
+                tool_calls=[{
                     "name": "guardar_o_actualizar_memoria_mayordomo",
                     "args": {"texto_nuevo": "cosa mayordomo"},
                     "id": str(uuid.uuid4())
                 }]
             )
         elif last_message == "memoriaG":
-            return AgentResponse(
-                recipient = "gardener",
-                message = "actualizar memoria"
+            return AIMessage(
+                content="Solicito al jardinero actualizar su memoria.",
+                tool_calls=[{
+                    "name": "delegar_a_agente",
+                    "args": {"agente_al_que_delegar": "gardener", "mensaje_para_agente_delegado": "actualizar memoria"},
+                    "id": str(uuid.uuid4())
+                }]
             )
         elif last_message == "toolB":
-            return AgentResponse(
+            return AIMessage(
                 recipient = "butler",
-                message = "Voy a ejecutar la herramienta como butler",
+                content = "Voy a ejecutar la herramienta como butler",
                 tool_calls = [{
                     "name": "encender_luz_jardin",
                     "args": {"zona": "ZONABUTLER"},
@@ -53,9 +63,9 @@ class DebugEngine(AnswerEngine):
                 }]
             )
         elif last_message == "toolBG":
-            return AgentResponse(
+            return AIMessage(
                 recipient = "butler",
-                message = "Caso mixto de herrmienta butler",
+                content = "Caso mixto de herrmienta butler",
                 tool_calls = [{
                     "name": "encender_luz_jardin",
                     "args": {"zona": "ZONABUTLERMIXTO"},
@@ -63,17 +73,15 @@ class DebugEngine(AnswerEngine):
                 }]
             )
         elif last_message == "Esto digo como jardinero que soy.":
-            return AgentResponse(
-                recipient = "user",
-                message = "El jardinero ha dicho cosas."
+            return AIMessage(
+                content="El jardinero ha dicho cosas."
             )
         else:
-            return AgentResponse(
-                recipient = "user",
-                message = f"Respuesta no prevista: {last_message}"
+            return AIMessage(
+                content = f"Respuesta no prevista: {last_message}"
             )
 
-    def gardener(self, messages) -> AIMessage:
+    def gardener(self, messages: list, tools: list | None = None) -> AIMessage:
         last_message = messages[-1].content
         logger.debug("Last message in gardener status: %s", last_message)
 

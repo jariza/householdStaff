@@ -9,7 +9,7 @@ from langchain_community.embeddings import FastEmbedEmbeddings
 from engines import DebugEngine, LLMEngine
 from graph import build_graph
 from httpHandlers import chat_router, consolidate_memory_router, long_term_memory_crud_router
-from tools import buscar_memoria_jardinero, buscar_memoria_mayordomo, encender_luz_jardin, guardar_o_actualizar_memoria_mayordomo, guardar_o_actualizar_memoria_jardinero
+from tools import buscar_memoria_jardinero, buscar_memoria_mayordomo, delegar_a_agente, encender_luz_jardin, guardar_o_actualizar_memoria_mayordomo, guardar_o_actualizar_memoria_jardinero
 from persistence import create_persistence_resources
 
 # Load and check configuration
@@ -33,7 +33,7 @@ logging.getLogger("aiosqlite").setLevel(LOG_LEVEL_AIOSQLITE)
 
 # Agents tools and engine
 gardener_tools = [encender_luz_jardin, buscar_memoria_jardinero, guardar_o_actualizar_memoria_jardinero]
-butler_tools = [encender_luz_jardin, buscar_memoria_mayordomo, guardar_o_actualizar_memoria_mayordomo]
+butler_tools = [delegar_a_agente, encender_luz_jardin, buscar_memoria_mayordomo, guardar_o_actualizar_memoria_mayordomo]
 
 # Prepare store embeddings
 store_embeddings = FastEmbedEmbeddings(model_name=STORE_EMBEDDINGS_MODEL)

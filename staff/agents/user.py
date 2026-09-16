@@ -5,6 +5,7 @@ from state import AgentsState, log_agent_state
 
 # Agent used for user input, it's not a real agent so it only need the process method
 class UserInput:
+    delegable  = False
 
     # Agent main method
     # state, states of all agents
