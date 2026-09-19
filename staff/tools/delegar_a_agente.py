@@ -38,4 +38,3 @@ def delegar_a_agente(agente_al_que_delegar: AgentName, # type: ignore[reportInva
             "next_recipient": agente_al_que_delegar.value
         }
     )
-

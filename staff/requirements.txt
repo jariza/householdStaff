@@ -1,8 +1,9 @@
 fastapi
 fastembed
+langchain-community
+langchain-google-genai
+langchain-ollama
 langgraph
 langgraph-checkpoint-sqlite
-langchain-community
-langchain-ollama
 python-dotenv
 uvicorn

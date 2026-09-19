@@ -1,4 +1,4 @@
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, BaseMessage
 import logging
 import uuid
 from .common import AnswerEngine
@@ -7,6 +7,9 @@ logger = logging.getLogger(__name__)
 
 # Engine with predictable answers
 class DebugEngine(AnswerEngine):
+
+    def extract_text(self, message: BaseMessage) -> str:
+        return str(message.content)
 
     def butler(self, messages: list, tools: list | None = None) -> AIMessage:
         last_message = messages[-1].content

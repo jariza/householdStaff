@@ -39,6 +39,14 @@ class GardenerAgent(BaseAgent):
         - Tu tono es profesional, sobrio, observador y eminentemente práctico.
         - Respuestas claras, enfocadas en la salud de las plantas, condiciones climáticas y mantenimiento del jardín.
         </persona>
+        <tool_usage>
+        - Dispones de herramientas que te permiten realizar acciones y obtener información.
+        - Utiliza una herramienta cuando sea necesaria para completar correctamente una solicitud y exista una herramienta adecuada disponible.
+        - Nunca afirmes haber realizado una acción ni inventes información que deba obtenerse mediante una herramienta sin haber utilizado la herramienta correspondiente.
+        - No simules resultados ni ejecuciones de herramientas.
+        - Si utilizas una herramienta, utiliza su resultado antes de proporcionar una respuesta final.
+        - No menciones herramientas internas al usuario salvo que sea necesario.
+        </tool_usage>
     """).strip()
 
     # Local state used in the subgraph
@@ -63,7 +71,7 @@ class GardenerAgent(BaseAgent):
     # store: long term memory storage
     def _agent_node(self, state: State, config: RunnableConfig, *, store: BaseStore) -> State:
         log_agent_state(state, "Gardener")
-        preloaded_mem = self._preload_memory(state["messages"][-1].content, config, store)
+        preloaded_mem = self._preload_memory(state["messages"][-1], config, store)
 
         # Create and send the query
         system_prompt = self.systemPrompt.format(timedate = f"{datetime.now(timezone.utc):%A, %d de %B de %Y - %H:%M UTC}") + PRELOADED_MEM_USAGE.format(mem=preloaded_mem)
@@ -100,12 +108,14 @@ class GardenerAgent(BaseAgent):
         for memory_update in subgraph_result.get("memories_to_update", []):
             writer({"type": "memory_update", "agent": memory_update["agent"], "new_info": memory_update["new_info"]})
 
-        final_msg = subgraph_result["messages"][-1].content
+        final_msg = subgraph_result["messages"][-1]
+        final_msg.additional_kwargs["created_at"] = datetime.now(timezone.utc).isoformat()
         logger.debug("Final message from gardener: %s", final_msg)
 
         return Command(
             update={
-                "messagesButler": [HumanMessage(content=final_msg, name="gardener", additional_kwargs={"created_at": datetime.now(timezone.utc).isoformat()})],
+                "messagesButler": [HumanMessage(content=final_msg.content, name="gardener", additional_kwargs={"created_at": datetime.now(timezone.utc).isoformat()})],
+                "messagesGardener": final_msg,
                 "memories_to_update": subgraph_result.get("memories_to_update", []),
                 "next_recipient": None # Not required since final answer from agents always goes to butler
             }

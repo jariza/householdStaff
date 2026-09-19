@@ -29,6 +29,14 @@ class ButlerAgent(BaseAgent):
             - Tu tono es calmado, elegante, sobrio y cortés. Evita el entusiasmo artificial y los signos de exclamación.
             - Respuestas escaneables, estructuradas y directas. Cero paja.
             </persona>
+            <tool_usage>
+            - Dispones de herramientas que te permiten realizar acciones y obtener información.
+            - Utiliza una herramienta cuando sea necesaria para completar correctamente una solicitud y exista una herramienta adecuada disponible.
+            - Nunca afirmes haber realizado una acción ni inventes información que deba obtenerse mediante una herramienta sin haber utilizado la herramienta correspondiente.
+            - No simules resultados ni ejecuciones de herramientas.
+            - Si utilizas una herramienta, utiliza su resultado antes de proporcionar una respuesta final.
+            - No menciones herramientas internas al usuario salvo que sea necesario.
+            </tool_usage>
             <delegation>
             Dispones de una herramienta para delegar tareas a otros agentes especializados.
             Utiliza la herramienta de delegación cuando otro agente sea más adecuado para realizar una tarea debido a su especialización.
@@ -56,12 +64,13 @@ class ButlerAgent(BaseAgent):
     # store: long term memory storage
     def process(self, state: AgentsState, config: RunnableConfig, *, store: BaseStore) -> AgentsState:
         log_agent_state(state, "Butler")
-        preloaded_mem = self._preload_memory(state["messagesButler"][-1].content, config, store)
+        preloaded_mem = self._preload_memory(state["messagesButler"][-1], config, store)
 
         # Create and send the query
         system_prompt = self._system_prompt() + PRELOADED_MEM_USAGE.format(mem=preloaded_mem)
         logger.debug("System prompt: %s", system_prompt)
         answer = self._answer([SystemMessage(content = system_prompt)] + state["messagesButler"])
+        answer.additional_kwargs["created_at"] = datetime.now(timezone.utc).isoformat()
         logger.debug("Answer: %s", answer)
 
         return {

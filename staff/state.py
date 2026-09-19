@@ -43,10 +43,12 @@ class AgentsState(TypedDict):
 
 # Return status message older than 24h
 def retrieve_older_than_24h(messages: list) -> list:
-    twentyfour_h_ago = datetime.now(timezone.utc) - timedelta(hours=24)
-    
+    # twentyfour_h_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+    # TODO: para prueba, eliminar luego
+    twentyfour_h_ago = datetime.now(timezone.utc)
+
     old_messages = []
-    
+
     for msg in messages:
         created_at_str = msg.additional_kwargs.get("created_at")
         
@@ -55,5 +57,7 @@ def retrieve_older_than_24h(messages: list) -> list:
             
             if msg_date < twentyfour_h_ago:
                 old_messages.append(msg)
+        else:
+            logger.error("Message without create_at, ignored: %s", msg)
 
     return old_messages

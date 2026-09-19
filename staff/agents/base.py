@@ -25,7 +25,7 @@ class BaseAgent:
     # Initialization
     # engine: answer engine (aka LLM)
     # tools, list of tool to bind the the agent
-    def __init__(self, engine, tools):
+    def __init__(self, engine, tools=None):
         self.agentName = type(self).__name__ # The name of the derived class is the name of the agent
         self.engine = engine
         self.tools = tools
@@ -35,7 +35,8 @@ class BaseAgent:
     # config: app config details
     # store: long term memory storage
     # Returns the search result
-    def _preload_memory(self, message: str, config: RunnableConfig, store: BaseStore) -> str:
+    def _preload_memory(self, message, config: RunnableConfig, store: BaseStore) -> str:
         user_id = config.get("configurable", {}).get("user_id")
         memory_namespace = (user_id, self.agentName)
-        return search_long_term_memory(message=message, memory_namespace=memory_namespace, store=store, emptyMsg=EMPTY_PRELOAD_MEM)
+        message_txt = self.engine.extract_text(message)
+        return search_long_term_memory(message=message_txt, memory_namespace=memory_namespace, store=store, emptyMsg=EMPTY_PRELOAD_MEM)
