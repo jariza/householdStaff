@@ -64,12 +64,25 @@ class ButlerAgent(BaseAgent):
     # store: long term memory storage
     def process(self, state: AgentsState, config: RunnableConfig, *, store: BaseStore) -> AgentsState:
         log_agent_state(state, "Butler")
+
         preloaded_mem = self._preload_memory(state["messagesButler"][-1], config, store)
+
+        messages_to_send = list(state["messagesButler"])
+        if config.get("configurable", {}).get("req_type", "user") == "alert":
+                alert_instruction = (
+                    "\n\n[INSTRUCCIÓN DE ALERTA AUTOMÁTICA]\n"
+                    "Si la alerta requiere atención inmediata del usuario, genera el mensaje normalmente.\n"
+                    "Si es informativa, de baja prioridad o no requiere sonar, añade la etiqueta [SILENCIO] al principio del mensaje.\n"
+                    "Escribe únicamente el texto final de la alerta sin explicaciones adicionales."
+                )
+
+                # Clone the last message so the original message in the state is not mutated                
+                messages_to_send[-1] = messages_to_send[-1].model_copy(update={"content": messages_to_send[-1].content + alert_instruction})
 
         # Create and send the query
         system_prompt = self._system_prompt() + PRELOADED_MEM_USAGE.format(mem=preloaded_mem)
         logger.debug("System prompt: %s", system_prompt)
-        answer = self._answer([SystemMessage(content = system_prompt)] + state["messagesButler"])
+        answer = self._answer([SystemMessage(content=system_prompt)] + messages_to_send)
         answer.additional_kwargs["created_at"] = datetime.now(timezone.utc).isoformat()
         logger.debug("Answer: %s", answer)
 

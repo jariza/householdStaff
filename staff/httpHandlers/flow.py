@@ -7,8 +7,9 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.store.base import BaseStore
 from langgraph.types import Command
 import logging
-from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from pydantic import BaseModel, Field, field_validator
+import re
+from typing import get_args, Literal, Optional
 
 from longTermMemory import store_or_update_long_term_memory
 from .common import ensure_state_initialized, get_graph, get_store
@@ -21,38 +22,63 @@ graph_lock = asyncio.Lock() # Local to this module
 
 # Sends message to notification system
 async def dispatch_notification(message: str, notifier_url: str):
+    if "[SILENCIO]" in message.upper():
+        silent_notification = True
+        message = re.sub(re.escape("[SILENCIO]"), "", message, flags=re.IGNORECASE).strip()
+    else:
+        silent_notification = False
+
     async with httpx.AsyncClient(timeout=5.0) as client:
         try:
-            await client.post(notifier_url, json={"message": message})
+            await client.post(notifier_url, json={"message": message, "silent_notification": silent_notification})
         except Exception as e:
             logger.error(f"Couldn't connect to notifier: {e}")
+
+ValidAlertAgents = Literal["butler", "gardener"]
 
 class ChatRequest(BaseModel):
     user_input: Optional[str] = Field(default=None, description = "Request text")
     user_id: int = Field(default=1, description="User ID") # Always 1 until multiuser is considered and implemented
-    request_source: Optional[Literal["user", "cronjob"]] = Field(default=None,  description="Request source")
+    alert_rcpt: Optional[str] = Field(default=None, description="Recipient agent in case of alert")
 
+    @field_validator("alert_rcpt")
+    @classmethod
+    # Same validation than default one but hiding the list of valid options
+    def validate_alert_rcpt(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if v not in set(get_args(ValidAlertAgents)):
+            raise ValueError("Invalid recipient")
+        return v
+
+@router.post("/alert")
 @router.post("/chat")
 @router.post("/consolidate-memory")
 async def flow_endpoint(request: Request, background_tasks: BackgroundTasks, data: ChatRequest = Body(default_factory=ChatRequest), graph: CompiledStateGraph = Depends(get_graph), store: BaseStore = Depends(get_store)):
-    consolidate_memory = request.url.path.endswith("/consolidate-memory")
-
-    if not consolidate_memory and (not data.user_input or not data.request_source):
-        raise HTTPException(status_code=400, detail="user_input and request_source are required when calling /chat")
+    if request.url.path.endswith("/alert"):
+        if not data.alert_rcpt:
+            raise HTTPException(status_code=400, detail="alert_rcpt is required when calling /alert")
+        if data.alert_rcpt not in set(graph.builder.nodes.keys()):
+            raise HTTPException(status_code=400, detail=f"Invalid alert_rcpt {data.alert_rcpt}")
+        req_type = "alert"
+    elif request.url.path.endswith("/consolidate-memory"):
+        req_type = "consolidate-memory"
+    else:
+        req_type = "user"
 
     async def event_generator():
-        config = {"configurable": {"thread_id": "1", "user_id": str(data.user_id), "memory_consolidation": consolidate_memory}}
+        config = {"configurable": {"thread_id": "1", "user_id": str(data.user_id), "req_type": req_type, "alert_rcpt": data.alert_rcpt}}
 
         async with graph_lock:
             await ensure_state_initialized(graph, config)
 
-            if consolidate_memory:
+            if req_type == "consolidate-memory":
                 user_input_to_send_to_agent = ""
             else:
                 user_input_to_send_to_agent = data.user_input
-                if data.request_source == "cronjob":
+                if req_type == "alert":
                     user_input_to_send_to_agent = (
-                        f"[TAREA PROGRAMADA] (El siguiente mensaje proviene de un cronjob automático, adapta tu respuesta según corresponda.)\n{data.user_input}"
+                        f"[ALERTA] (El siguiente mensaje proviene de una alerta automática, adapta tu respuesta según corresponda.)\n{data.user_input}"
                 )
 
             # Run graph and return the answer
@@ -75,7 +101,7 @@ async def flow_endpoint(request: Request, background_tasks: BackgroundTasks, dat
                                 yield f"data: {data_payload}\n\n"
 
             # If this request came from a cronjob and the LLM generated a response, send it as a notification
-            if data.request_source == "cronjob" and butler_messages:
+            if req_type == "alert" and butler_messages:
                 full_response = "\n\n".join(butler_messages)
                 background_tasks.add_task(dispatch_notification, full_response, request.app.state.notifier_url)
 

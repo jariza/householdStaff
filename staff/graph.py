@@ -3,8 +3,10 @@ from langgraph.prebuilt import ToolNode
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 import logging
+from typing import get_args
 
 from agents import ButlerAgent, GardenerAgent, MemoryConsolidator, UserInput
+from httpHandlers import ValidAlertAgents
 from state import AgentsState, log_agent_state
 
 logger = logging.getLogger(__name__)
@@ -13,8 +15,17 @@ logger = logging.getLogger(__name__)
 def router_after_user(state: AgentsState, config: RunnableConfig) -> str:
     log_agent_state(state, "Router after User")
 
-    if config.get("configurable", {}).get("memory_consolidation", False):
+    req_type = config.get("configurable", {}).get("req_type", "user")
+
+    if req_type == "consolidate-memory":
         return "memoryConsolidator"
+    elif req_type == "alert":
+        alert_rcpt = config.get("configurable", {}).get("req_type", "alert_rcpt")
+        if alert_rcpt in set(get_args(ValidAlertAgents)):
+            return alert_rcpt
+        else:
+            logger.warning("Not valid alert_rcpt: %s", alert_rcpt)
+            return "butler"
     else:
         return "butler"
 

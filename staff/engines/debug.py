@@ -112,7 +112,6 @@ class DebugEngine(AnswerEngine):
             )
 
     def memoryConsolidator(self, messages) -> AIMessage:
-        print(messages)
         last_message = messages[-1]
         logger.debug("Last message in memory consolidator status: %s", last_message)
 

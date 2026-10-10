@@ -15,8 +15,8 @@ class UserInput:
 
         user_input = interrupt("Usuario")
 
-        # If it's memory consolidation just pass the flow to the router
-        if config.get("configurable", {}).get("memory_consolidation", False):
+        # If it's not user request type just pass the flow to the router
+        if not config.get("configurable", {}).get("req_type", "user"):
             return {}
 
         # It it's not memory consolidation send a message to the butler

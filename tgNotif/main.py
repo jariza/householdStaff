@@ -35,6 +35,7 @@ app = FastAPI(title="Telegram notifications service", lifespan=lifespan)
 # Define payload structure for requests
 class NotificationRequest(BaseModel):
     message: str
+    silent_notification: bool = False
 
 # Request process
 @app.post("/notify")
@@ -44,6 +45,7 @@ async def send_notification(payload: NotificationRequest, request: Request):
         response = await client.post("/sendMessage", json={
             "CHAT_ID": DESTINATION_CHAT_ID,
             "text": payload.message,
+            "disable_notification": payload.silent_notification
         })
         res_json = response.json()
 
