@@ -4,12 +4,12 @@ from langchain_core.tools import tool, InjectedToolCallId
 from typing import Annotated
 
 @tool
-def guardar_o_actualizar_memoria_jardinero(texto_nuevo: str, tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
+def save_or_update_gardener_memory(new_text: str, tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
     """
-    Guarda una preferencia, regla duradera o dato importante sobre el jardín.
-    CRITERIOS DE USO:
-    - Usar SOLO si el usuario expresa una preferencia explícita (ej. "me gustan las hortensias"), una norma de la casa (ej. "no regar al mediodía") o un dato permanente.
-    - NO USAR para estados temporales ("hoy hace calor"), saludos o conversación trivial.
+    Saves a preference, long-lasting rule, or important detail about the garden.
+    USAGE CRITERIA:
+    - Use ONLY if the user expresses an explicit preference (e.g., "I like hydrangeas"), a house rule (e.g., "do not water at noon"), or a permanent fact.
+    - DO NOT USE for temporary states ("it is hot today"), greetings, or casual conversation.
     """
 
     # The tool will only request the memory to be updated, the request will be queued as a background task
@@ -19,7 +19,7 @@ def guardar_o_actualizar_memoria_jardinero(texto_nuevo: str, tool_call_id: Annot
             "memories_to_update": [
                 {
                     "agent": "gardener",
-                    "new_info": texto_nuevo
+                    "new_info": new_text
                 }
             ],
             "messages": [

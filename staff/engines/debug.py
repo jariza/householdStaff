@@ -23,17 +23,17 @@ class DebugEngine(AnswerEngine):
             return AIMessage(
                 content="Voy a consultar este tema con el jardinero.",
                 tool_calls=[{
-                    "name": "delegar_a_agente",
-                    "args": {"agente_al_que_delegar": "gardener", "mensaje_para_agente_delegado": "Consulta sobre el jardín."},
+                    "name": "delegate_to_agent",
+                    "args": {"agent_to_delegate_to": "gardener", "message_for_delegated_agent": "Consulta sobre el jardín."},
                     "id": str(uuid.uuid4())
                 }]
             )
-        elif last_message == "tool" or last_message == "Los focos de la zona 'ZONABUTLERMIXTO' del jardin estan encendidos.":
+        elif last_message == "tool" or last_message == "Los focos de la zone 'zoneBUTLERMIXTO' del jardin estan encendidos.":
             return AIMessage(
                 content="Delego el encendido de luz al jardinero.",
                 tool_calls=[{
-                    "name": "delegar_a_agente",
-                    "args": {"agente_al_que_delegar": "gardener", "mensaje_para_agente_delegado": "encender luz jardin"},
+                    "name": "delegate_to_agent",
+                    "args": {"agent_to_delegate_to": "gardener", "message_for_delegated_agent": "encender luz jardin"},
                     "id": str(uuid.uuid4())
                 }]
             )
@@ -41,8 +41,8 @@ class DebugEngine(AnswerEngine):
             return AIMessage(
                 content="Voy a actualizar la memoria",
                 tool_calls=[{
-                    "name": "guardar_o_actualizar_memoria_mayordomo",
-                    "args": {"texto_nuevo": "cosa mayordomo"},
+                    "name": "save_or_update_butler_memory",
+                    "args": {"new_text": "cosa mayordomo"},
                     "id": str(uuid.uuid4())
                 }]
             )
@@ -50,8 +50,8 @@ class DebugEngine(AnswerEngine):
             return AIMessage(
                 content="Solicito al jardinero actualizar su memoria.",
                 tool_calls=[{
-                    "name": "delegar_a_agente",
-                    "args": {"agente_al_que_delegar": "gardener", "mensaje_para_agente_delegado": "actualizar memoria"},
+                    "name": "delegate_to_agent",
+                    "args": {"agent_to_delegate_to": "gardener", "message_for_delegated_agent": "actualizar memoria"},
                     "id": str(uuid.uuid4())
                 }]
             )
@@ -60,8 +60,8 @@ class DebugEngine(AnswerEngine):
                 recipient = "butler",
                 content = "Voy a ejecutar la herramienta como butler",
                 tool_calls = [{
-                    "name": "encender_luz_jardin",
-                    "args": {"zona": "ZONABUTLER"},
+                    "name": "turn_on_garden_light",
+                    "args": {"zone": "zoneBUTLER"},
                     "id": str(uuid.uuid4())
                 }]
             )
@@ -70,8 +70,8 @@ class DebugEngine(AnswerEngine):
                 recipient = "butler",
                 content = "Caso mixto de herrmienta butler",
                 tool_calls = [{
-                    "name": "encender_luz_jardin",
-                    "args": {"zona": "ZONABUTLERMIXTO"},
+                    "name": "turn_on_garden_light",
+                    "args": {"zone": "zoneBUTLERMIXTO"},
                     "id": str(uuid.uuid4())
                 }]
             )
@@ -92,8 +92,8 @@ class DebugEngine(AnswerEngine):
             return AIMessage(
                 content = "Voy a encender la luz de la terraza.",
                 tool_calls = [{
-                    "name": "encender_luz_jardin",
-                    "args": {"zona": "terraza"},
+                    "name": "turn_on_garden_light",
+                    "args": {"zone": "terraza"},
                     "id": str(uuid.uuid4())
                 }]
             )
@@ -101,8 +101,8 @@ class DebugEngine(AnswerEngine):
             return AIMessage(
                 content = "Soy el jardinero y voy a actualizar la memoria",
                 tool_calls = [{
-                    "name": "guardar_o_actualizar_memoria_jardinero",
-                    "args": {"texto_nuevo": "cosa jardinero"},
+                    "name": "save_or_update_gardener_memory",
+                    "args": {"new_text": "cosa jardinero"},
                     "id": str(uuid.uuid4())
                 }]
             )

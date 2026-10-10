@@ -6,12 +6,12 @@ from typing import Annotated
 
 
 @tool
-def guardar_o_actualizar_memoria_mayordomo(texto_nuevo: str, tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
+def save_or_update_butler_memory(new_text: str, tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
     """
-    Guarda una preferencia, regla duradera o dato importante sobre el usuario o el funcionamiento de la casa.
-    CRITERIOS DE USO:
-    - Usar SOLO si el usuario expresa una preferencia explícita (ej. "prefiero que me hables de forma breve"), una norma o instrucción duradera (ej. "avísame siempre antes de hacer cambios") o un dato importante y estable.
-    - NO USAR para información temporal ("hoy tengo invitados"), solicitudes puntuales, saludos o conversación trivial.
+    Saves a preference, long-lasting rule, or important detail about the user or household operations.
+    USAGE CRITERIA:
+    - Use ONLY if the user expresses an explicit preference (e.g., "I prefer concise responses"), an enduring rule or instruction (e.g., "always notify me before making changes"), or an important, stable detail.
+    - DO NOT USE for temporary information ("I have guests today"), one-time requests, greetings, or casual conversation.
     """
 
     # The tool will only request the memory to be updated, the request will be queued as a background task
@@ -21,7 +21,7 @@ def guardar_o_actualizar_memoria_mayordomo(texto_nuevo: str, tool_call_id: Annot
     writer({
         "type": "memory_update",
         "agent": "butler",
-        "new_info": texto_nuevo
+        "new_info": new_text
     })
 
     return Command(
