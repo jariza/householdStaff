@@ -8,7 +8,6 @@ from langchain_community.embeddings import FastEmbedEmbeddings
 from engines import DebugEngine, LLMEngine
 from graph import build_graph
 from httpHandlers import flow_router, long_term_memory_crud_router
-from tools import search_memory_gardner, search_memory_butler, delegate_to_agent, turn_on_garden_light, save_or_update_butler_memory, save_or_update_gardener_memory
 from persistence import create_persistence_resources
 
 # Load and check configuration
@@ -33,10 +32,6 @@ logging.basicConfig(
 )
 logging.getLogger("aiosqlite").setLevel(LOG_LEVEL_AIOSQLITE)
 
-# Agents tools and engine
-gardener_tools = [turn_on_garden_light, search_memory_gardner, save_or_update_gardener_memory]
-butler_tools = [delegate_to_agent, turn_on_garden_light, search_memory_butler, save_or_update_butler_memory]
-
 # Prepare store embeddings
 store_embeddings = FastEmbedEmbeddings(model_name=STORE_EMBEDDINGS_MODEL)
 
@@ -46,7 +41,7 @@ async def lifespan(app: FastAPI):
     async with AsyncExitStack() as stack:
 
         engine = DebugEngine() if DEBUG else LLMEngine(api_key=GOOGLE_API_KEY)
-        graph = build_graph(engine, butler_tools, gardener_tools)
+        graph = build_graph(engine)
 
         checkpointer, store = await create_persistence_resources(stack, store_embeddings, DEBUG or AVOID_PERSISTENCE)
         app.state.graph = graph.compile(checkpointer=checkpointer, store=store)

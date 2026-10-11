@@ -12,8 +12,8 @@ import logging
 from operator import add
 from textwrap import dedent
 from typing import Annotated, TypedDict
-from .base import BaseAgent
-from .commonPrompts import PRELOADED_MEM_USAGE
+from ..base import BaseAgent
+from ..commonPrompts import PRELOADED_MEM_USAGE
 from state import AgentsState, log_agent_state
 
 logger = logging.getLogger(__name__)

@@ -4,8 +4,8 @@ from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 import logging
 from textwrap import dedent
-from .base import BaseAgent
-from .commonPrompts import PRELOADED_MEM_USAGE
+from ..base import BaseAgent
+from ..commonPrompts import PRELOADED_MEM_USAGE
 from state import AgentsState, log_agent_state
 
 

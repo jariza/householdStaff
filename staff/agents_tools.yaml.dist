@@ -1,0 +1,4 @@
+# This file defines additional tools assigned to each agent.
+# Syntax:
+# agent_name:
+#   - tool_name

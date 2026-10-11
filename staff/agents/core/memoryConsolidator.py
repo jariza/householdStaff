@@ -4,7 +4,7 @@ from langchain_core.messages import RemoveMessage
 import logging
 from textwrap import dedent
 from state import AgentsState, log_agent_state, retrieve_older_than_24h
-from .base import BaseAgent
+from ..base import BaseAgent
 
 logger = logging.getLogger(__name__)
 

@@ -12,6 +12,8 @@ class BaseAgent:
     description: str = ""
     # Can an agent delegate on this one?
     delegable: bool = True
+    # List of tools to assign to the agent
+    desired_tools: list[str] = []
 
     @classmethod
     def delegatable_agents(cls):
