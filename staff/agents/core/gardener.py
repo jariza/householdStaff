@@ -14,6 +14,7 @@ from textwrap import dedent
 from typing import Annotated, TypedDict
 from ..base import BaseAgent
 from ..commonPrompts import PRELOADED_MEM_USAGE
+from engines import EngineType
 from state import AgentsState, log_agent_state
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ class GardenerAgent(BaseAgent):
 
     # Send the message to the answer machine (aka LLM)
     def _answer(self, messages):
-        return self.engine.gardener(messages, self.tools)
+        return self.engine.invoke(EngineType.SMALL, "gardener", messages, self.tools)
 
     # Agent node for the subgraph
     # state, internal state

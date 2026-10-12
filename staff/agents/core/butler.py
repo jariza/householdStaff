@@ -6,6 +6,7 @@ import logging
 from textwrap import dedent
 from ..base import BaseAgent
 from ..commonPrompts import PRELOADED_MEM_USAGE
+from engines import EngineType
 from state import AgentsState, log_agent_state
 
 
@@ -56,7 +57,7 @@ class ButlerAgent(BaseAgent):
 
     # Send the message to the answer machine (aka LLM)
     def _answer(self, messages):
-        return self.engine.butler(messages, self.tools)
+        return self.engine.invoke(EngineType.NORMAL, "butler", messages, self.tools)
 
     # Agent main method
     # state, states of all agents

@@ -158,7 +158,7 @@ Adding new capabilities is modular and requires zero changes to core graph files
 ## 🙈 Elephant in the Room (Technical Debt)
 
 Yes, I know...
-- Yes, I know this project is screaming for Docker containers and `docker-compose`.
+- Yes, I know this project is screaming for Docker containers and `docker compose`.
 - Yes, I know there are values in the code that should be living in config files.
 - Yes, I know I'm mixing python code and system prompts in the same place.
 

@@ -1,7 +1,8 @@
+import inspect
 from langchain_core.messages import AIMessage, BaseMessage
 import logging
 import uuid
-from .common import AnswerEngine
+from .common import AnswerEngine, EngineType
 
 logger = logging.getLogger(__name__)
 
@@ -10,6 +11,14 @@ class DebugEngine(AnswerEngine):
 
     def extract_text(self, message: BaseMessage) -> str:
         return str(message.content)
+
+    def invoke(self, engine_type: EngineType, agent_name: str, messages: list, tools: list | None = None) -> AIMessage:
+        if agent_name == "butler":
+            return self.butler(messages, tools)
+        elif agent_name == "gardener":
+            return self.gardener(messages, tools)
+        else:
+            return AIMessage(content="Parece que el engine no lo está usando un agente previsto")
 
     def butler(self, messages: list, tools: list | None = None) -> AIMessage:
         last_message = messages[-1].content

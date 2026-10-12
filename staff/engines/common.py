@@ -1,5 +1,10 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 from langchain_core.messages import AIMessage, BaseMessage
+
+class EngineType(str, Enum):
+    NORMAL = "normal"
+    SMALL = "small"
 
 # Base class for answer engines
 class AnswerEngine(ABC):
@@ -10,10 +15,5 @@ class AnswerEngine(ABC):
         ...
 
     @abstractmethod
-    def butler(self, messages: list, tools: list | None = None) -> AIMessage:
+    def invoke(self, engine_type: EngineType, agent_name: str, messages: list, tools: list | None = None) -> AIMessage:
         ...
-
-    @abstractmethod
-    def gardener(self, messages: list, tools: list | None = None) -> AIMessage:
-        ...
-
