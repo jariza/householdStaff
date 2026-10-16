@@ -1,4 +1,4 @@
-from langgraph.graph import END, START, StateGraph
+from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
@@ -91,8 +91,8 @@ def build_graph(engine) -> StateGraph:
     agent_tools_cfg = _load_agent_tools_config("agents_tools.yaml")
 
     # Base tools
-    butler_base_tools = ["delegate_to_agent", "turn_on_garden_light", "search_memory_butler", "save_or_update_butler_memory"]
-    gardener_base_tools = ["turn_on_garden_light", "search_memory_gardner", "save_or_update_gardener_memory"]
+    butler_base_tools = ["delegate_to_agent", "turn_on_garden_light", "search_memory_butler", "save_or_update_butler_memory", "discover_and_load_mcp_butler"]
+    gardener_base_tools = ["turn_on_garden_light", "search_memory_gardner", "save_or_update_gardener_memory", "discover_and_load_mcp_gardener"]
 
     # Dict with available tools
     available_tools = {name: func for name, func in tools.__dict__.items() if isinstance(func, BaseTool) and not name.startswith("_")}
@@ -114,7 +114,7 @@ def build_graph(engine) -> StateGraph:
     graph.add_node("user", user.process)
     graph.add_node("butler", butler.process)
     graph.add_node("gardener", gardener.process)
-    graph.add_node("butlerTools", ToolNode(butler_tools, messages_key="messagesButler"))
+    graph.add_node("butlerTools", butler.dynamic_tools_node)
     graph.add_node("memoryConsolidator", memory_consolidator.process)
     
     # Core edges definition

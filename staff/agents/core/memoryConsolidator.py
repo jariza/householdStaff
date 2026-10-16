@@ -1,6 +1,8 @@
+from datetime import datetime, timezone
 from langgraph.config import get_stream_writer
 from langgraph.store.base import BaseStore
 from langchain_core.messages import RemoveMessage
+from langchain_core.runnables import RunnableConfig
 import logging
 from textwrap import dedent
 from state import AgentsState, log_agent_state, retrieve_older_than_24h
@@ -49,15 +51,28 @@ class MemoryConsolidator(BaseAgent):
 
     # Agent main method
     # state, states of all agents
-    def process(self, state: AgentsState, *, store: BaseStore) -> AgentsState:
+    async def process(self, state: AgentsState, config: RunnableConfig, *, store: BaseStore) -> AgentsState:
         log_agent_state(state, "MemoryConsolidator")
 
-        writer = get_stream_writer()
+        butler_messages = state.get("messagesButler", [])
+        if butler_messages:
+            time_last_message = datetime.fromisoformat(butler_messages[-1].additional_kwargs.get("created_at"))
+            seconds_since_last_message = (datetime.now(timezone.utc) - time_last_message).total_seconds()
+            if seconds_since_last_message < 60*30:
+                logger.info("Memory consolidation skipped, less than 30 minutes since last message.")
+                return {}
+
+        # Close all MCPs
+        mcp_manager = config.get("configurable", {}).get("mcp_manager")
+        await mcp_manager.close_all()
 
         updates = {
             "messagesButler": [],
             "messagesGardener": [],
+            "mcpServersInUseByButler": []
         }
+
+        writer = get_stream_writer()
 
         # Consolidate memory for each agent
         for agent in ["butler", "gardener"]:
@@ -84,7 +99,7 @@ class MemoryConsolidator(BaseAgent):
                 recent_messages_txt ="\n".join(recent_messages_list)
 
                 # Get the memory
-                current_memory = store.search((1, agent))
+                current_memory = store.asearch((1, agent))
                 current_memory_text = "\n".join(f"- {memory.value['texto']}" for memory in current_memory)
 
                 # Adding system prompt directly here since this request will be executed only once per agent

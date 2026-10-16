@@ -2,11 +2,14 @@ from datetime import datetime, timezone
 from langgraph.store.base import BaseStore
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.prebuilt import ToolNode
 import logging
 from textwrap import dedent
+
 from ..base import BaseAgent
 from ..commonPrompts import PRELOADED_MEM_USAGE
 from engines import EngineType
+from mcp_catalog import search_server_mcp_catalog
 from state import AgentsState, log_agent_state
 
 
@@ -32,6 +35,8 @@ class ButlerAgent(BaseAgent):
             </persona>
             <tool_usage>
             - Dispones de herramientas que te permiten realizar acciones y obtener información.
+            - Algunas tools proceden de MCP; si consideras que las herramientas activas son insuficientes, dispones de herramientas para buscar y cargar más tools.
+            - Las herramientas MCP disponibles pueden cambiar dinámicamente entre mensajes. No asumas que una herramienta del historial sigue activa si no figura en tu lista actual de tools.
             - Utiliza una herramienta cuando sea necesaria para completar correctamente una solicitud y exista una herramienta adecuada disponible.
             - Nunca afirmes haber realizado una acción ni inventes información que deba obtenerse mediante una herramienta sin haber utilizado la herramienta correspondiente.
             - No simules resultados ni ejecuciones de herramientas.
@@ -55,18 +60,30 @@ class ButlerAgent(BaseAgent):
 
         return system_prompt
 
-    # Send the message to the answer machine (aka LLM)
-    def _answer(self, messages):
-        return self.engine.invoke(EngineType.NORMAL, "butler", messages, self.tools)
+    async def _search_for_useful_mcp(self, state: AgentsState, store: BaseStore):
+        last_message = self.engine.extract_text(state["messagesButler"][-1])
+
+        # Clean MCP in use if previous message was more than 30 minutes ago
+        if len(state["messagesButler"]) > 2:
+            time_last_message = datetime.fromisoformat(state["messagesButler"][-2].additional_kwargs.get("created_at"))
+            seconds_since_last_message = (datetime.now(timezone.utc) - time_last_message).total_seconds()
+            if seconds_since_last_message > 60*30:
+                logger.debug("MCP serversin used cleaned up")
+                state["mcpServersInUseByButler"] = []
+
+        mcp_server = await search_server_mcp_catalog(last_message, store)
+        if (mcp_server) and (mcp_server not in state["mcpServersInUseByButler"]):
+            state["mcpServersInUseByButler"].append(mcp_server)
 
     # Agent main method
     # state, states of all agents
     # config: app config details
     # store: long term memory storage
-    def process(self, state: AgentsState, config: RunnableConfig, *, store: BaseStore) -> AgentsState:
+    async def process(self, state: AgentsState, config: RunnableConfig, *, store: BaseStore) -> AgentsState:
         log_agent_state(state, "Butler")
 
-        preloaded_mem = self._preload_memory(state["messagesButler"][-1], config, store)
+        preloaded_mem = await self._preload_memory(state["messagesButler"][-1], config, store)
+        await self._search_for_useful_mcp(state, store)
 
         messages_to_send = list(state["messagesButler"])
         if config.get("configurable", {}).get("req_type", "user") == "alert":
@@ -83,10 +100,17 @@ class ButlerAgent(BaseAgent):
         # Create and send the query
         system_prompt = self._system_prompt() + PRELOADED_MEM_USAGE.format(mem=preloaded_mem)
         logger.debug("System prompt: %s", system_prompt)
-        answer = self._answer([SystemMessage(content=system_prompt)] + messages_to_send)
+        active_tools = await self._get_active_tools(state["mcpServersInUseByButler"], config)
+        answer = await self.engine.ainvoke(EngineType.NORMAL, "butler", [SystemMessage(content=system_prompt)] + messages_to_send, active_tools)
         answer.additional_kwargs["created_at"] = datetime.now(timezone.utc).isoformat()
         logger.debug("Answer: %s", answer)
 
         return {
             "messagesButler": [answer],
         }
+
+    # Allows tool node to change the set of tools
+    async def dynamic_tools_node(self, state: AgentsState, config: RunnableConfig):
+        active_tools = await self._get_active_tools(state["mcpServersInUseByButler"], config)
+        executor = ToolNode(active_tools, messages_key="messagesButler")
+        return await executor.ainvoke(state, config)

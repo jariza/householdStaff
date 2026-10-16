@@ -28,7 +28,7 @@ class LLMEngine(AnswerEngine):
             }
 
     # Invokes model according to pool and sticky fallback
-    def _invoke_with_sticky_fallback(self, engine_type: EngineType, messages: list, tools: list | None = None) -> AIMessage:
+    async def _invoke_with_sticky_fallback(self, engine_type: EngineType, messages: list, tools: list | None = None) -> AIMessage:
         pool = self._model_pools.get(engine_type)
 
         llms = pool["llms"]
@@ -44,7 +44,7 @@ class LLMEngine(AnswerEngine):
                 if tools:
                     llm = llm.bind_tools(tools)
                 
-                response = llm.invoke(messages)
+                response = await llm.ainvoke(messages)
 
                 # Model call succeeded, update active_idx
                 pool["active_idx"] = idx
@@ -58,9 +58,9 @@ class LLMEngine(AnswerEngine):
         raise RuntimeError(f"All available models for {engine_type.value} have failed.")
 
     # Entry point for the engine
-    def invoke(self, engine_type: EngineType, agent_name: str, messages: list, tools: list | None = None) -> AIMessage:
+    async def ainvoke(self, engine_type: EngineType, agent_name: str, messages: list, tools: list | None = None) -> AIMessage:
         try:
-            response = self._invoke_with_sticky_fallback(engine_type, messages, tools)
+            response = await self._invoke_with_sticky_fallback(engine_type, messages, tools)
             logger.info("Agent %s: Tokens usage: %s. Response metadata: %s", agent_name, response.usage_metadata, response.response_metadata)
             return response
         except Exception as e:

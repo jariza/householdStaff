@@ -39,6 +39,7 @@ def log_agent_state(state: AgentsState, title: str):
 class AgentsState(TypedDict):
     messagesButler: Annotated[list[BaseMessage], add_messages]
     messagesGardener: Annotated[list[BaseMessage], add_messages]
+    mcpServersInUseByButler: list[str]
     next_recipient: str | None
 
 # Return status message older than 24h

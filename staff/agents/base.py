@@ -1,8 +1,12 @@
 from langgraph.store.base import BaseStore
 from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import BaseTool
 import logging
+
+
 from .commonPrompts import EMPTY_PRELOAD_MEM
 from longTermMemory import search_long_term_memory
+from mcp_catalog import load_tools_from_mcp_server
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +16,6 @@ class BaseAgent:
     description: str = ""
     # Can an agent delegate on this one?
     delegable: bool = True
-    # List of tools to assign to the agent
-    desired_tools: list[str] = []
 
     @classmethod
     def delegatable_agents(cls):
@@ -26,19 +28,29 @@ class BaseAgent:
 
     # Initialization
     # engine: answer engine (aka LLM)
-    # tools, list of tool to bind the the agent
-    def __init__(self, engine, tools=None):
-        self.agentName = type(self).__name__ # The name of the derived class is the name of the agent
+    # base_tools, list of base tools to bind the the agent
+    def __init__(self, engine, base_tools: list[BaseTool] = []):
+        self.agentName = type(self).__name__.removesuffix("Agent") # The name of the derived class is the name of the agent
         self.engine = engine
-        self.tools = tools
+        self.base_tools = base_tools
+        self.tools_from_mcp = []
 
     # Search into the long term memory
     # message: message to search
     # config: app config details
     # store: long term memory storage
     # Returns the search result
-    def _preload_memory(self, message, config: RunnableConfig, store: BaseStore) -> str:
+    async def _preload_memory(self, message, config: RunnableConfig, store: BaseStore) -> str:
         user_id = config.get("configurable", {}).get("user_id")
         memory_namespace = (user_id, self.agentName)
         message_txt = self.engine.extract_text(message)
-        return search_long_term_memory(message=message_txt, memory_namespace=memory_namespace, store=store, emptyMsg=EMPTY_PRELOAD_MEM)
+        return await search_long_term_memory(message=message_txt, memory_namespace=memory_namespace, store=store, emptyMsg=EMPTY_PRELOAD_MEM)
+
+    async def _get_active_tools(self, mcp_server_list: list[str], config: RunnableConfig) -> list[BaseTool]:
+        mcp_manager = config.get("configurable", {}).get("mcp_manager")
+        # Get the list of MCP tools every time so we know it's fresh
+        mcp_tools = list(self.base_tools)
+        for mcp_server in mcp_server_list:
+            mcp_tools += await load_tools_from_mcp_server(mcp_server, mcp_manager)
+
+        return mcp_tools

@@ -67,7 +67,13 @@ async def flow_endpoint(request: Request, background_tasks: BackgroundTasks, dat
         req_type = "user"
 
     async def event_generator():
-        config = {"configurable": {"thread_id": "1", "user_id": str(data.user_id), "req_type": req_type, "alert_rcpt": data.alert_rcpt}}
+        config = {"configurable": {
+            "thread_id": "1",
+            "user_id": str(data.user_id),
+            "req_type": req_type,
+            "alert_rcpt": data.alert_rcpt,
+            "mcp_manager": request.app.state.mcp_manager
+        }}
 
         async with graph_lock:
             await ensure_state_initialized(graph, config)

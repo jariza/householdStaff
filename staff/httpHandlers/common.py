@@ -19,6 +19,7 @@ async def ensure_state_initialized(graph, config):
         # First time we run the graph
         initial_state = AgentsState(
             messagesButler = [],
-            messagesGardener = []
+            messagesGardener = [],
+            mcpServersInUseByButler = []
         )
         await graph.ainvoke(initial_state, config)

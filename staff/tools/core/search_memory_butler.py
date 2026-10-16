@@ -7,9 +7,9 @@ from typing import Annotated
 from longTermMemory import search_long_term_memory
 
 @tool
-def search_memory_butler(search_text: str, config: RunnableConfig, store: Annotated[BaseStore, InjectedStore()]) -> str:
-    """Search the butler's long-term memory."""
+async def search_memory_butler(search_text: str, config: RunnableConfig, store: Annotated[BaseStore, InjectedStore()]) -> str:
+    """Search long-term memory for relevant background information, user preferences, or past interactions when the immediate context is insufficient."""
 
     user_id = config.get("configurable", {}).get("user_id")
     memory_namespace = (user_id, "butler")
-    return search_long_term_memory(search_text, memory_namespace, store=store, emptyMsg="No relevant information was found in the memory.")
+    return await search_long_term_memory(search_text, memory_namespace, store=store, emptyMsg="No relevant information was found in the memory.")

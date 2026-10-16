@@ -12,7 +12,7 @@ async def create_persistence_resources(stack, embeddings, debug):
             index={
                 "embed": embeddings.embed_documents,
                 "dims": 384,
-                "fields": ["texto"]
+                "fields": ["texto", "description"]
             }
         )
     else:
@@ -30,7 +30,7 @@ async def create_persistence_resources(stack, embeddings, debug):
                 index={
                     "embed": embeddings.embed_documents,
                     "dims": 384,
-                    "fields": ["texto"]
+                    "fields": ["texto", "description"]
                 }
             )
         )

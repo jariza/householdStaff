@@ -15,10 +15,10 @@ class LongTermMemoryMerge(BaseModel):
         description = "Texto consolidado de la memoria manteniendo lo antiguo y añadiendo/corrigiendo lo nuevo."
     )
 
-def store_or_update_long_term_memory(new_info: str, memory_namespace, ollama_url: str, store: Annotated[BaseStore, InjectedStore()]):
+async def store_or_update_long_term_memory(new_info: str, memory_namespace, ollama_url: str, store: Annotated[BaseStore, InjectedStore()]):
     logger.debug("Processing new info: %s. Namespace: %s", new_info, memory_namespace)
 
-    current_memory_results = store.search(memory_namespace, query=new_info, limit=1)
+    current_memory_results = await store.asearch(memory_namespace, query=new_info, limit=1)
     
     if current_memory_results and current_memory_results[0].score is not None and current_memory_results[0].score >= 0.75:
         logger.debug("Found something related")
@@ -54,7 +54,7 @@ def store_or_update_long_term_memory(new_info: str, memory_namespace, ollama_url
         merge_chain = memory_update_prompt_template | structured_llm.with_retry()
 
         try:
-            res = merge_chain.invoke({
+            res = await merge_chain.ainvoke({
                 "current_memory": previous_info,
                 "new_info": new_info
             })
@@ -65,7 +65,7 @@ def store_or_update_long_term_memory(new_info: str, memory_namespace, ollama_url
 
         logger.debug("Updated memory: %s", updated_text)
         
-        store.put(
+        await store.aput(
             namespace = memory_namespace,
             key = found_key,
             value = {"texto": updated_text}

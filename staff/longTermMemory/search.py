@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 # store: long term memory storage
 # emptyMsg: message return in case of no findings
 # Returns the search result
-def search_long_term_memory(message: str, memory_namespace, store: BaseStore, emptyMsg: str) -> str:
+async def search_long_term_memory(message: str, memory_namespace, store: BaseStore, emptyMsg: str) -> str:
     logger.debug("Searching in long term memory, namespace %s, message: %s", memory_namespace, message)
-    raw_results = store.search(memory_namespace, query=message, limit=2)
+    raw_results = await store.asearch(memory_namespace, query=message, limit=2)
     logger.debug("Raw search results: %r", raw_results)
 
     # Filter the raw results based on score

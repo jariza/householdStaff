@@ -2,12 +2,13 @@ from contextlib import asynccontextmanager, AsyncExitStack
 from dotenv import dotenv_values
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import logging
 from langchain_community.embeddings import FastEmbedEmbeddings
+import logging
 
 from engines import DebugEngine, LLMEngine
 from graph import build_graph
 from httpHandlers import flow_router, long_term_memory_crud_router
+from mcp_catalog import MCPSessionManager, populate_mcp_catalog
 from persistence import create_persistence_resources
 
 # Load and check configuration
@@ -49,8 +50,13 @@ async def lifespan(app: FastAPI):
         app.state.local_ollama_url = LOCAL_OLLAMA_URL
         app.state.notifier_url = NOTIFIER_URL
         app.state.store = store
+        app.state.mcp_manager = MCPSessionManager("mcp_servers.yaml")
+
+        await populate_mcp_catalog("mcp_servers.yaml", store)
 
         yield
+
+        await app.state.mcp_manager.close_all()
 
 # FastAPI config
 app = FastAPI(lifespan=lifespan)

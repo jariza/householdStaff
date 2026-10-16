@@ -1,8 +1,8 @@
 # 🏰 Household Staff AI (Pet Project)
 
-A hands-on, experimental sandbox currently built to understand **LLMs, multi-agent orchestrations, long-term memory consolidation, RAG, and custom tooling** from the ground up—without relying on high-level pre-cooked "turnkey" agent frameworks. 
+A hands-on, experimental sandbox currently built to understand **LLMs, multi-agent orchestrations, long-term memory consolidation, RAG, custom tooling and MCP Integration** from the ground up—without relying on high-level pre-cooked "turnkey" agent frameworks. 
 
-As I explore the ecosystem, I'll keep adding whatever catches my attention and feels worth investigating (for example, **MCP** is already sitting high on my TODO list).
+As I explore the ecosystem, I'll keep adding whatever catches my attention and feels worth investigating.
 
 ---
 
@@ -61,6 +61,7 @@ Copy the provided `.env.dist` templates to `.env` in each respective folder, and
 ```bash
 cp staff/.env.dist staff/.env
 cp staff/agents_tools.yaml.dist staff/agents_tools.yaml
+cp staff/mcp_servers.yaml.dist staff/mcp_servers.yaml
 cp tgRecv/.env.dist tgRecv/.env
 cp tgNotif/.env.dist tgNotif/.env
 ```
@@ -80,6 +81,9 @@ cp tgNotif/.env.dist tgNotif/.env
 3. **`tgNotif/.env`**:
    - `TELEGRAM_BOT_TOKEN`: Same Telegram Bot API token.
    - `DESTINATION_CHAT_ID`: Telegram Chat ID where notifications should be sent.
+
+4. **`staff/mcp_servers.yaml`**:
+   - Configures the list of MCP servers to be initialized at startup. You can specify standalone servers or pass specific arguments/timezones (e.g., `mcp_server_time` with timezone arguments).
 
 ---
 
@@ -153,6 +157,14 @@ Adding new capabilities is modular and requires zero changes to core graph files
     - custom_weather_tool
   gardener:
     - custom_irrigation_tool
+  ```
+* **Dynamic MCP Servers (`mcp_servers.yaml`)**: MCP servers are discovered automatically on startup, but loaded lazily on demand. Define them in `staff/mcp_servers.yaml` (see `staff/mcp_servers.yaml.dist` for reference):
+  ```yaml
+  mcp_servers:
+    - mcp_server_fetch
+    - server: mcp_server_time
+      args: ["--local-timezone", "Europe/Madrid"]
+    - mcp_weather_server
   ```
 
 ## 🙈 Elephant in the Room (Technical Debt)

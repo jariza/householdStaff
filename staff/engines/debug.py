@@ -12,15 +12,15 @@ class DebugEngine(AnswerEngine):
     def extract_text(self, message: BaseMessage) -> str:
         return str(message.content)
 
-    def invoke(self, engine_type: EngineType, agent_name: str, messages: list, tools: list | None = None) -> AIMessage:
+    async def ainvoke(self, engine_type: EngineType, agent_name: str, messages: list, tools: list | None = None) -> AIMessage:
         if agent_name == "butler":
-            return self.butler(messages, tools)
+            return await self.butler(messages, tools)
         elif agent_name == "gardener":
-            return self.gardener(messages, tools)
+            return await self.gardener(messages, tools)
         else:
             return AIMessage(content="Parece que el engine no lo está usando un agente previsto")
 
-    def butler(self, messages: list, tools: list | None = None) -> AIMessage:
+    async def butler(self, messages: list, tools: list | None = None) -> AIMessage:
         last_message = messages[-1].content
         logger.debug("Last message in butler status: %s", last_message)
 
@@ -84,6 +84,16 @@ class DebugEngine(AnswerEngine):
                     "id": str(uuid.uuid4())
                 }]
             )
+        elif last_message == "mcpB":
+            return AIMessage(
+                recipient = "butler",
+                content = "Voy a buscar MCP",
+                tool_calls = [{
+                    "name": "discover_and_load_mcp_butler",
+                    "args": {"search_text": "weather"},
+                    "id": str(uuid.uuid4())
+                }]
+            )
         elif last_message == "Esto digo como jardinero que soy.":
             return AIMessage(
                 content="El jardinero ha dicho cosas."
@@ -93,7 +103,7 @@ class DebugEngine(AnswerEngine):
                 content = f"Respuesta no prevista: {last_message}"
             )
 
-    def gardener(self, messages: list, tools: list | None = None) -> AIMessage:
+    async def gardener(self, messages: list, tools: list | None = None) -> AIMessage:
         last_message = messages[-1].content
         logger.debug("Last message in gardener status: %s", last_message)
 
@@ -120,7 +130,7 @@ class DebugEngine(AnswerEngine):
                 content = "Esto digo como jardinero que soy."
             )
 
-    def memoryConsolidator(self, messages) -> AIMessage:
+    async def memoryConsolidator(self, messages) -> AIMessage:
         last_message = messages[-1]
         logger.debug("Last message in memory consolidator status: %s", last_message)
 

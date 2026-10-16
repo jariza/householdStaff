@@ -1,0 +1,12 @@
+# This file defines MCP (Model Context Protocol) servers loaded at startup.
+# 
+# You can configure servers in two ways:
+# 1. Simple string: Use just the server name if no extra arguments are required.
+# 2. Object notation: Specify the server name under 'server' and provide command-line 
+#    arguments using 'args' as a list.
+#
+# Syntax:
+# mcp_servers:
+#   - simple_server_name
+#   - server: server_name_with_args
+#     args: ["--flag", "value"]

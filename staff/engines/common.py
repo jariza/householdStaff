@@ -15,5 +15,5 @@ class AnswerEngine(ABC):
         ...
 
     @abstractmethod
-    def invoke(self, engine_type: EngineType, agent_name: str, messages: list, tools: list | None = None) -> AIMessage:
+    async def ainvoke(self, engine_type: EngineType, agent_name: str, messages: list, tools: list | None = None) -> AIMessage:
         ...
