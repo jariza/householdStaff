@@ -1,22 +1,28 @@
-from langgraph.graph import START, StateGraph
-from langgraph.prebuilt import ToolNode
+import logging
+import os
+from typing import get_args
+
+import yaml
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
-import logging
-import os
-from typing import Dict, get_args, List, Optional
-import yaml
+from langgraph.graph import START, StateGraph
 
-from agents import CUSTOM_AGENTS, ButlerAgent, GardenerAgent, MemoryConsolidator, UserInput
-from httpHandlers import ValidAlertAgents
-from state import AgentsState, log_agent_state
 import tools
+from agents import (
+    CUSTOM_AGENTS,
+    ButlerAgent,
+    GardenerAgent,
+    MemoryConsolidator,
+    UserInput,
+)
+from http_handlers import ValidAlertAgents
+from state import AgentsState, log_agent_state
 
 logger = logging.getLogger(__name__)
 
 # Load agent optional tools mapping
-def _load_agent_tools_config(config_path: str) -> Dict[str, List[str]]:
+def _load_agent_tools_config(config_path: str) -> dict[str, list[str]]:
     if not os.path.exists(config_path):
         logger.warning(f"Configuration file {config_path} not found. Proceeding with empty optional tool mappings.")
         return {}
@@ -27,9 +33,9 @@ def _load_agent_tools_config(config_path: str) -> Dict[str, List[str]]:
     return data
 
 # Get the list of tools used by the agent
-def _get_tools_for_agent(agent_name: str, available_tools: Dict[str, BaseTool], config_tools_mapping: Dict[str, List[str]], base_tools: Optional[List[str]] = None) -> List[BaseTool]:
+def _get_tools_for_agent(agent_name: str, available_tools: dict[str, BaseTool], config_tools_mapping: dict[str, list[str]], base_tools: list[str] | None = None) -> list[BaseTool]:
     base_tools_list = base_tools or []
-    resolved_tools: List[BaseTool] = []
+    resolved_tools: list[BaseTool] = []
     seen_names = set()
 
     yaml_tool_names = config_tools_mapping.get(agent_name, [])
@@ -94,7 +100,7 @@ def build_graph(engine) -> StateGraph:
     butler_base_tools = ["delegate_to_agent", "turn_on_garden_light", "search_memory_butler", "save_or_update_butler_memory", "discover_and_load_mcp_butler"]
     gardener_base_tools = ["turn_on_garden_light", "search_memory_gardner", "save_or_update_gardener_memory", "discover_and_load_mcp_gardener"]
 
-    # Dict with available tools
+    # dict with available tools
     available_tools = {name: func for name, func in tools.__dict__.items() if isinstance(func, BaseTool) and not name.startswith("_")}
 
     # Core agents tools

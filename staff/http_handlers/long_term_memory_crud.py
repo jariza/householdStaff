@@ -1,7 +1,8 @@
+import uuid
+from typing import Annotated, Any
+
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional
-import uuid
 
 router = APIRouter(prefix="/store", tags=["Store CRUD"])
 
@@ -22,7 +23,7 @@ async def _store_put(store, namespace: tuple, key: str, value: dict):
 
 
 # Helper function to perform a LIST/SEARCH operation compatible with both sync (InMemoryStore) and async (AsyncSqliteStore) stores.
-async def _store_search(store, namespace: Optional[tuple] = None, limit: int = 10, offset: int = 0):
+async def _store_search(store, namespace: tuple | None = None, limit: int = 10, offset: int = 0):
     prefix = namespace if namespace is not None else ()
     
     if hasattr(store, "asearch"):
@@ -39,20 +40,35 @@ async def _store_delete(store, namespace: tuple, key: str):
 
 # Pydantic schemas for request and response validation
 class StoreItemCreate(BaseModel):
-    namespace: List[str] = Field(description="Namespace structure as a list of strings")
-    key: Optional[str] = Field(None,  description="Optional unique key. If omitted, a UUIDv4 will be automatically generated.")
+    namespace: list[str] = Field(description="Namespace structure as a list of strings")
+    key: str | None = Field(None,  description="Optional unique key. If omitted, a UUIDv4 will be automatically generated.")
     texto: str = Field()
 class StoreItemResponse(BaseModel):
-    namespace: List[str]
+    namespace: list[str]
     key: str
-    value: Dict[str, Any]
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    value: dict[str, Any]
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+# Retrieve all namespaces in the store
+# curl -X GET "http://127.0.0.1:8000/store/namespaces"
+@router.get("/namespaces", response_model=list[str], summary="Get all namespaces in the store")
+async def get_all_namespaces(
+    request: Request
+):
+    store = request.app.state.store
+    
+    # Passing an empty tuple () as namespace fetches all items across all namespaces
+    results = await _store_search(store, namespace=())
+
+    unique_namespaces = {"/".join(item.namespace) for item in results}
+    return list(unique_namespaces)
 
 
 # Create or update an item in the LangGraph store. Generates a UUID if no key is provided.
 # curl -X PUT -H "Content-Type: application/json" -d '{"namespace": ["1", "butler"], "texto": "El usuario prefiere el café solo y sin azúcar por las mañanas."}' "http://127.0.0.1:8000/store"
-@router.put("", response_model=Dict[str, str], summary="Create or update an item")
+@router.put("", response_model=dict[str, str], summary="Create or update an item")
 async def put_item(item: StoreItemCreate, request: Request):
     store = request.app.state.store
     ns_tuple = tuple(item.namespace)
@@ -73,7 +89,7 @@ async def put_item(item: StoreItemCreate, request: Request):
 # Retrieve all items in the store across all namespaces with pagination support.
 # curl -X GET "http://127.0.0.1:8000/store/all"
 # curl -X GET "http://127.0.0.1:8000/store/all?limit=10&offset=5"
-@router.get("/all", response_model=List[StoreItemResponse], summary="Get all items in the store")
+@router.get("/all", response_model=list[StoreItemResponse], summary="Get all items in the store")
 async def get_all_items(
     request: Request,
     limit: int = Query(20, ge=1, le=100, description="Number of items to return"),
@@ -101,8 +117,8 @@ async def get_all_items(
 @router.get("/item", response_model=StoreItemResponse, summary="Get an item by Key")
 async def get_item(
     request: Request,
-    namespace: List[str] = Query(),
-    key: str = Query()
+    namespace: Annotated[list[str], Query()],
+    key: Annotated[str, Query()]
 ):
     store = request.app.state.store
     ns_tuple = tuple(namespace)
@@ -122,11 +138,11 @@ async def get_item(
 
 # Delete a specific item from the long-term memory store.
 # curl -X DELETE "http://127.0.0.1:8000/store/item?namespace=1&namespace=butler&key=preferencia01"
-@router.delete("/item", response_model=Dict[str, str], summary="Delete an item")
+@router.delete("/item", response_model=dict[str, str], summary="Delete an item")
 async def delete_item(
     request: Request,
-    namespace: List[str] = Query(),
-    key: str = Query()
+    namespace: Annotated[list[str], Query()],
+    key: Annotated[str, Query()]
 ):
     store = request.app.state.store
     ns_tuple = tuple(namespace)
