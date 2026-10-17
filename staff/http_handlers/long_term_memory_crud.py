@@ -58,11 +58,25 @@ async def get_all_namespaces(
     request: Request
 ):
     store = request.app.state.store
-    
-    # Passing an empty tuple () as namespace fetches all items across all namespaces
-    results = await _store_search(store, namespace=())
 
-    unique_namespaces = {"/".join(item.namespace) for item in results}
+    all_results = []
+    limit = 1000
+    offset = 0
+    while True:
+        # Passing an empty tuple () as namespace fetches all items across all namespaces
+        results = await _store_search(store, namespace=(), limit=limit, offset=offset)
+
+        if not results:
+            break
+
+        all_results.extend(results)
+
+        if len(results) < limit:
+            break
+
+        offset += limit
+
+    unique_namespaces = {"/".join(item.namespace) for item in all_results}
     return list(unique_namespaces)
 
 

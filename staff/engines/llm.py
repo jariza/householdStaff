@@ -13,7 +13,7 @@ class LLMEngine(AnswerEngine):
     def __init__(self, api_key: str):
         # Models grouped by category, listed in decreasing order of preference
         models_config = {
-            EngineType.NORMAL: ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2-flash"],
+            EngineType.NORMAL: ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3-flash", "gemini-2.5-flash", "gemini-2-flash"],
             EngineType.SMALL: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]             
         }
 
