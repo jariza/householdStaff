@@ -145,6 +145,28 @@ The backend (`staff`) exposes several core FastAPI routes:
 
 ---
 
+## 🧪 Testing
+
+Nothing fancy here yet—just a set of API integration tests written with [Hurl](https://hurl.dev) located under `staff/tests/`. They hit the FastAPI endpoints to ensure routing, mock payloads, and state graph responses are behaving correctly.
+
+> ⚠️ **Prerequisite:** The backend (`staff`) **must be running in Debug Mode** (`DEBUG=true` in `staff/.env`) when executing these tests so it uses the deterministic `DebugEngine` instead of hitting live LLM APIs.
+
+### Running the tests
+
+1. Ensure the `staff` service is running in terminal 1 with `DEBUG=true`:
+   ```bash
+   cd staff
+   uvicorn main:app --reload --port 8000
+   ```
+
+2. In a separate terminal, execute the Hurl test suite:
+   ```bash
+   cd staff
+   hurl --test tests/*.hurl
+   ```
+
+---
+
 ## 🧩 Extending Agents & Tools
 
 Adding new capabilities is modular and requires zero changes to core graph files:
