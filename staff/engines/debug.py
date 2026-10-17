@@ -14,13 +14,15 @@ class DebugEngine(AnswerEngine):
 
     async def ainvoke(self, engine_type: EngineType, agent_name: str, messages: list, tools: list | None = None) -> AIMessage:
         if agent_name == "butler":
-            return await self.butler(messages, tools)
+            return await self.butler(messages)
         elif agent_name == "gardener":
-            return await self.gardener(messages, tools)
+            return await self.gardener(messages)
+        elif agent_name == "memoryConsolidator":
+            return await self.memoryConsolidator(messages)
         else:
-            return AIMessage(content="Parece que el engine no lo está usando un agente previsto")
+            return AIMessage(content=f"Parece que el engine no lo está usando un agente previsto: {agent_name}")
 
-    async def butler(self, messages: list, tools: list | None = None) -> AIMessage:
+    async def butler(self, messages: list) -> AIMessage:
         last_message = messages[-1].content
         logger.debug("Last message in butler status: %s", last_message)
 
@@ -103,7 +105,7 @@ class DebugEngine(AnswerEngine):
                 content = f"Respuesta no prevista: {last_message}"
             )
 
-    async def gardener(self, messages: list, tools: list | None = None) -> AIMessage:
+    async def gardener(self, messages: list) -> AIMessage:
         last_message = messages[-1].content
         logger.debug("Last message in gardener status: %s", last_message)
 
@@ -131,7 +133,7 @@ class DebugEngine(AnswerEngine):
             )
 
     async def memoryConsolidator(self, messages) -> AIMessage:
-        last_message = messages[-1]
+        last_message = messages[-1].content
         logger.debug("Last message in memory consolidator status: %s", last_message)
 
         return AIMessage(

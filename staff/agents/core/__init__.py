@@ -1,4 +1,6 @@
 from .butler import ButlerAgent
 from .gardener import GardenerAgent
-from .memoryConsolidator import MemoryConsolidator
+from .memory_consolidator import MemoryConsolidator
 from .user import UserInput
+
+__all__ = ["ButlerAgent", "GardenerAgent", "MemoryConsolidator", "UserInput"]

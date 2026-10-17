@@ -1,11 +1,15 @@
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
+from textwrap import dedent
+
+from langchain_core.messages import HumanMessage, RemoveMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.config import get_stream_writer
 from langgraph.store.base import BaseStore
-from langchain_core.messages import RemoveMessage
-from langchain_core.runnables import RunnableConfig
-import logging
-from textwrap import dedent
+
+from engines import EngineType
 from state import AgentsState, log_agent_state, retrieve_older_than_24h
+
 from ..base import BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -57,7 +61,7 @@ class MemoryConsolidator(BaseAgent):
         butler_messages = state.get("messagesButler", [])
         if butler_messages:
             time_last_message = datetime.fromisoformat(butler_messages[-1].additional_kwargs.get("created_at"))
-            seconds_since_last_message = (datetime.now(timezone.utc) - time_last_message).total_seconds()
+            seconds_since_last_message = (datetime.now(UTC) - time_last_message).total_seconds()
             if seconds_since_last_message < 60*30:
                 logger.info("Memory consolidation skipped, less than 30 minutes since last message.")
                 return {}
@@ -79,7 +83,7 @@ class MemoryConsolidator(BaseAgent):
             logger.debug("Consolidating %s", agent)
 
             # Get the messages and remove them from the state
-            old_messages = retrieve_older_than_24h(state.get("messages{}".format(agent.capitalize()), []))
+            old_messages = retrieve_older_than_24h(state.get(f"messages{agent.capitalize()}", []))
 
             if old_messages:
                 recent_messages_list = []
@@ -99,7 +103,7 @@ class MemoryConsolidator(BaseAgent):
                 recent_messages_txt ="\n".join(recent_messages_list)
 
                 # Get the memory
-                current_memory = store.asearch((1, agent))
+                current_memory = await store.asearch((1, agent))
                 current_memory_text = "\n".join(f"- {memory.value['texto']}" for memory in current_memory)
 
                 # Adding system prompt directly here since this request will be executed only once per agent
@@ -113,8 +117,9 @@ class MemoryConsolidator(BaseAgent):
                     """)
                 # Templating the prompt in two steps so there are no issues with indent in the final prompt
                 consolidation_prompt = prompt_template.format(self.system_prompt, current_memory_text, recent_messages_txt)
+                consolidation_prompt_msg = HumanMessage(content=consolidation_prompt, name="memoryConsolidator")
 
-                response = self.engine.memoryConsolidator(consolidation_prompt)
+                response = await self.engine.ainvoke(EngineType.NORMAL, "memoryConsolidator", [consolidation_prompt_msg])
                 if response.content:
                     writer({
                         "type": "memory_update",
