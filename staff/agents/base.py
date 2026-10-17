@@ -1,12 +1,13 @@
-from langgraph.store.base import BaseStore
-from langchain_core.runnables import RunnableConfig
-from langchain_core.tools import BaseTool
 import logging
 
+from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import BaseTool
+from langgraph.store.base import BaseStore
 
-from .commonPrompts import EMPTY_PRELOAD_MEM
 from longTermMemory import search_long_term_memory
 from mcp_catalog import load_tools_from_mcp_server
+
+from .commonPrompts import EMPTY_PRELOAD_MEM
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +30,10 @@ class BaseAgent:
     # Initialization
     # engine: answer engine (aka LLM)
     # base_tools, list of base tools to bind the the agent
-    def __init__(self, engine, base_tools: list[BaseTool] = []):
+    def __init__(self, engine, base_tools: list[BaseTool] | None = None):
         self.agentName = type(self).__name__.removesuffix("Agent") # The name of the derived class is the name of the agent
         self.engine = engine
-        self.base_tools = base_tools
+        self.base_tools = base_tools or []
         self.tools_from_mcp = []
 
     # Search into the long term memory

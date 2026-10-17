@@ -1,6 +1,8 @@
+import logging
+
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-import logging
+
 from .common import AnswerEngine, EngineType
 
 logger = logging.getLogger(__name__)
@@ -11,7 +13,7 @@ class LLMEngine(AnswerEngine):
     def __init__(self, api_key: str):
         # Models grouped by category, listed in decreasing order of preference
         models_config = {
-            EngineType.NORMAL: ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3-flash", "gemini-2.5-flash", "gemini-2-flash"],
+            EngineType.NORMAL: ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2-flash"],
             EngineType.SMALL: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"]             
         }
 
@@ -50,7 +52,7 @@ class LLMEngine(AnswerEngine):
                 pool["active_idx"] = idx
                 return response
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.warning(
                     f"{engine_type.value} engine: model at index {idx} ({llms[idx].model}) failed. Trying next one... Error: {e}"
                 )
@@ -63,7 +65,7 @@ class LLMEngine(AnswerEngine):
             response = await self._invoke_with_sticky_fallback(engine_type, messages, tools)
             logger.info("Agent %s: Tokens usage: %s. Response metadata: %s", agent_name, response.usage_metadata, response.response_metadata)
             return response
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Critical failure in pool '{engine_type.value}': {e}")
             return AIMessage(
                 content="Lo siento, en este momento no puedo procesar tu solicitud debido a un problema técnico de conexión."
@@ -82,11 +84,10 @@ class LLMEngine(AnswerEngine):
             for block in content:
                 if isinstance(block, str):
                     text_parts.append(block)
-                elif isinstance(block, dict):
-                    if block.get("type") == "text":
-                        text = block.get("text")
-                        if text:
-                            text_parts.append(text)
+                elif isinstance(block, dict) and block.get("type") == "text":
+                    text = block.get("text")
+                    if text:
+                        text_parts.append(text)
             return "".join(text_parts)
 
         # Fallback

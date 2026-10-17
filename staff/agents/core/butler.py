@@ -1,17 +1,18 @@
-from datetime import datetime, timezone
-from langgraph.store.base import BaseStore
+import logging
+from datetime import UTC, datetime
+from textwrap import dedent
+
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import ToolNode
-import logging
-from textwrap import dedent
+from langgraph.store.base import BaseStore
 
-from ..base import BaseAgent
-from ..commonPrompts import PRELOADED_MEM_USAGE
 from engines import EngineType
 from mcp_catalog import search_server_mcp_catalog
 from state import AgentsState, log_agent_state
 
+from ..base import BaseAgent
+from ..commonPrompts import PRELOADED_MEM_USAGE
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class ButlerAgent(BaseAgent):
     delegable  = False
 
     def _system_prompt(self):
-        timedate = f"{datetime.now(timezone.utc):%A, %d de %B de %Y - %H:%M UTC}"
+        timedate = f"{datetime.now(UTC):%A, %d de %B de %Y - %H:%M UTC}"
         available_agents = []
         for name, description in BaseAgent.delegatable_agents().items():
             available_agents.append(f"- {name}: {description}")
@@ -66,7 +67,7 @@ class ButlerAgent(BaseAgent):
         # Clean MCP in use if previous message was more than 30 minutes ago
         if len(state["messagesButler"]) > 2:
             time_last_message = datetime.fromisoformat(state["messagesButler"][-2].additional_kwargs.get("created_at"))
-            seconds_since_last_message = (datetime.now(timezone.utc) - time_last_message).total_seconds()
+            seconds_since_last_message = (datetime.now(UTC) - time_last_message).total_seconds()
             if seconds_since_last_message > 60*30:
                 logger.debug("MCP serversin used cleaned up")
                 state["mcpServersInUseByButler"] = []
@@ -100,9 +101,10 @@ class ButlerAgent(BaseAgent):
         # Create and send the query
         system_prompt = self._system_prompt() + PRELOADED_MEM_USAGE.format(mem=preloaded_mem)
         logger.debug("System prompt: %s", system_prompt)
+
         active_tools = await self._get_active_tools(state["mcpServersInUseByButler"], config)
         answer = await self.engine.ainvoke(EngineType.NORMAL, "butler", [SystemMessage(content=system_prompt)] + messages_to_send, active_tools)
-        answer.additional_kwargs["created_at"] = datetime.now(timezone.utc).isoformat()
+        answer.additional_kwargs["created_at"] = datetime.now(UTC).isoformat()
         logger.debug("Answer: %s", answer)
 
         return {

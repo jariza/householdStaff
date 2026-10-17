@@ -1,23 +1,22 @@
-from langchain_core.messages import ToolMessage
-from langchain_core.runnables import RunnableConfig
-from langchain_core.tools import tool, InjectedToolCallId
-from langgraph.prebuilt import InjectedStore, InjectedState
-from langgraph.store.base import BaseStore
-from langgraph.types import Command
 from typing import Annotated
 
+from langchain_core.messages import ToolMessage
+from langchain_core.tools import InjectedToolCallId, tool
+from langgraph.prebuilt import InjectedState, InjectedStore
+from langgraph.store.base import BaseStore
+from langgraph.types import Command
+
 from mcp_catalog import search_server_mcp_catalog
-from agents import GardenerAgent
+
 
 @tool
-async def discover_and_load_mcp_gardener(search_text: str, state: Annotated[GardenerAgent.State, InjectedState()], store: Annotated[BaseStore, InjectedStore()], tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
+async def discover_and_load_mcp_gardener(capability_needed: str, mcp_current_list: Annotated[list, InjectedState("mcp_server_in_use")], store: Annotated[BaseStore, InjectedStore()], tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
     """Find and activate an external MCP tool from the catalog when no active tool matches the request.
     
     Describe the capability in capability_needed using English keywords for optimal search accuracy (e.g., 'weather forecast', 'fetch url', 'timezone convert').
     """
 
-    mcp_server = await search_server_mcp_catalog(search_text, store)
-    mcp_current_list = list(state["mcp_server_in_use"])
+    mcp_server = await search_server_mcp_catalog(capability_needed, store)
 
     if not mcp_server:
         return Command(update={

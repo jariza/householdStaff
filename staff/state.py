@@ -1,15 +1,26 @@
-from datetime import datetime, timedelta, timezone
-from langgraph.graph.message import add_messages
-from langchain_core.messages import BaseMessage
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, TypedDict
 
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
+
 logger = logging.getLogger(__name__)
+
+# States for agents and who is going to receive the next message (next_recipient)
+class AgentsState(TypedDict):
+    messagesButler: Annotated[list[BaseMessage], add_messages]
+    messagesGardener: Annotated[list[BaseMessage], add_messages]
+    mcpServersInUseByButler: list[str]
+    next_recipient: str | None
 
 # Formatted log of agents states
 # state, agents states
 # title, message header
 def log_agent_state(state: AgentsState, title: str):
+    if not logger.isEnabledFor(logging.DEBUG):
+        return
+
     lines = ["", f"==================== {title} ===================="]
 
     for channel in ("messagesButler", "messagesGardener"):
@@ -31,22 +42,16 @@ def log_agent_state(state: AgentsState, title: str):
     next_recipient = state.get("next_recipient")
     lines.append(f"next_recipient: {next_recipient!r}")
 
+    mcpServersInUseByButler = state.get("mcpServersInUseByButler")
+    lines.append(f"mcpServersInUseByButler: {mcpServersInUseByButler!r}")
+
     lines.append("=" * 54)
 
     logger.debug("%s", "\n".join(lines))
 
-# States for agents and who is going to receive the next message (next_recipient)
-class AgentsState(TypedDict):
-    messagesButler: Annotated[list[BaseMessage], add_messages]
-    messagesGardener: Annotated[list[BaseMessage], add_messages]
-    mcpServersInUseByButler: list[str]
-    next_recipient: str | None
-
 # Return status message older than 24h
 def retrieve_older_than_24h(messages: list) -> list:
-    # twentyfour_h_ago = datetime.now(timezone.utc) - timedelta(hours=24)
-    # TODO: para prueba, eliminar luego
-    twentyfour_h_ago = datetime.now(timezone.utc)
+    twentyfour_h_ago = datetime.now(UTC) - timedelta(hours=24)
 
     old_messages = []
 

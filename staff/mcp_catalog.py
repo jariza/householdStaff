@@ -1,15 +1,15 @@
-import asyncio
+import logging
+import os
+import sys
 from contextlib import AsyncExitStack
+from typing import Any
+
+import yaml
 from langchain_core.tools import BaseTool
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.store.base import BaseStore
-import logging
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-import os
-import sys
-from typing import Any, Dict
-import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class MCPSessionManager:
                 # Attempt a graceful session close if available
                 if "session" in server_data:
                     await server_data["session"].close()
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
             
             try:
@@ -68,13 +68,13 @@ class MCPSessionManager:
                     logger.debug(f"Expected task mismatch while closing MCP {server_name}: {e}")
                 else:
                     logger.error(f"Error closing MCP server {server_name}: {e}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.error(f"Error closing MCP server {server_name}: {e}")
 
         self.active_servers.clear()
 
 # Load MCP catalog yaml file
-def _load_mcp_catalog_config(yaml_path: str) -> Dict[str, Any]:
+def _load_mcp_catalog_config(yaml_path: str) -> dict[str, Any]:
     if not os.path.exists(yaml_path):
         logger.warning(f"MCP catalog file {yaml_path} not found. Proceeding with empty MCP catalog.")
         return {}
@@ -82,7 +82,7 @@ def _load_mcp_catalog_config(yaml_path: str) -> Dict[str, Any]:
     try:
         with open(yaml_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
-    except Exception as e:
+    except (OSError, yaml.YAMLError) as e:
         logger.error(f"Error parsing YAML file {yaml_path}: {e}. Proceeding with empty MCP catalog.")
         return {}
 
@@ -122,16 +122,18 @@ async def populate_mcp_catalog(yaml_path: str, store: BaseStore):
 
         parameters = StdioServerParameters(command=sys.executable, args=["-m", server] + extra_args)
 
-        async with stdio_client(parameters) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                tools = await load_mcp_tools(session)
-                for tool in tools:
-                    await store.aput(
-                        namespace = MCP_CATALOG_NAMESPACE,
-                        key = f"{server}__{tool.name}",
-                        value = {"description": tool.description, "server": server}
-                    )
+        async with (
+            stdio_client(parameters) as (read, write),
+            ClientSession(read, write) as session,
+        ):
+            await session.initialize()
+            tools = await load_mcp_tools(session)
+            for tool in tools:
+                await store.aput(
+                    namespace = MCP_CATALOG_NAMESPACE,
+                    key = f"{server}__{tool.name}",
+                    value = {"description": tool.description, "server": server}
+                )
 
 # Search server from MCP catalog
 # Returns the name of the server, empty string if no server was found
