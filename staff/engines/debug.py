@@ -93,7 +93,7 @@ class DebugEngine(AnswerEngine):
                 content = "Voy a buscar MCP",
                 tool_calls = [{
                     "name": "discover_and_load_mcp_butler",
-                    "args": {"search_text": "weather"},
+                    "args": {"capability_needed": "fake capability"},
                     "id": str(uuid.uuid4())
                 }]
             )

@@ -1,6 +1,6 @@
 # 🏰 Household Staff AI (Pet Project)
 
-A hands-on, experimental sandbox currently built to understand **LLMs, multi-agent orchestrations, long-term memory consolidation, RAG, custom tooling and MCP Integration** from the ground up—without relying on high-level pre-cooked "turnkey" agent frameworks. 
+A hands-on, experimental sandbox currently built to understand **LLMs, multi-agent orchestrations, long-term memory consolidation, RAG, custom tooling and MCP Integration** from the ground up — while deliberately keeping high-level agent frameworks and abstractions to a minimum.
 
 As I explore the ecosystem, I'll keep adding whatever catches my attention and feels worth investigating.
 
@@ -11,8 +11,8 @@ As I explore the ecosystem, I'll keep adding whatever catches my attention and f
 ### Why this project exists
 This is a personal **pet project** created as a learning space. The goal is to learn how core mechanics work under the hood using state-graph primitives (LangGraph, FastAPI, and Server-Sent Events) rather than getting stuck relying strictly on off-the-shelf wrappers.
 
-### Written with AI Assistance (Not "Vibecoded")
-This codebase was developed with the assistance of AI as a pair-programming partner. However, **this is explicitly not a "vibecoded" project** where code was blindly pasted without care. Every component—from state propagation to memory routing and tool injection—was crafted deliberately to understand *how* and *why* it works. 
+### AI-Assisted, Hands-On Learning
+I use AI extensively as a coding partner. However, since this is meant as a learning sandbox, I prefer to do the coding myself. I wanted to get my hands dirty with the implementation and troubleshooting — taking the time to understand the underlying mechanics of state management, routing, and tools.
 
 *(Full disclosure: this README file itself was 100% written by an AI to summarize my chaotic notes and codebase!)*
 

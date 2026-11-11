@@ -43,7 +43,7 @@ class BaseAgent:
     # Returns the search result
     async def _preload_memory(self, message, config: RunnableConfig, store: BaseStore) -> str:
         user_id = config.get("configurable", {}).get("user_id")
-        memory_namespace = (user_id, self.agentName)
+        memory_namespace = (user_id, "longterm", self.agentName)
         message_txt = self.engine.extract_text(message)
         return await search_long_term_memory(message=message_txt, memory_namespace=memory_namespace, store=store, emptyMsg=EMPTY_PRELOAD_MEM)
 

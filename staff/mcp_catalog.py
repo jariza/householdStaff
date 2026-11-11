@@ -13,7 +13,7 @@ from mcp.client.stdio import stdio_client
 
 logger = logging.getLogger(__name__)
 
-MCP_CATALOG_NAMESPACE = ("0", "mcpcatalog")
+MCP_CATALOG_NAMESPACE = ("0", "mcpcatalog", "mcpcatalog")
 
 # Avoid re-opening MCP servers
 class MCPSessionManager:
