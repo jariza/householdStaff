@@ -1,8 +1,11 @@
-from datetime import datetime, timezone
-from langgraph.types import interrupt
+from datetime import UTC, datetime
+
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.types import interrupt
+
 from state import AgentsState, log_agent_state
+
 
 # Agent used for user input, it's not a real agent so it only need the process method
 class UserInput:
@@ -21,5 +24,5 @@ class UserInput:
 
         # It it's not memory consolidation send a message to the butler
         return {
-            "messagesButler": [HumanMessage(content=f"{user_input}", name="user", additional_kwargs={"created_at": datetime.now(timezone.utc).isoformat()})]
+            "messagesButler": [HumanMessage(content=f"{user_input}", name="user", additional_kwargs={"created_at": datetime.now(UTC).isoformat()})]
         }

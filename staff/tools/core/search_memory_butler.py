@@ -5,7 +5,7 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import InjectedStore
 from langgraph.store.base import BaseStore
 
-from longTermMemory import search_long_term_memory
+from long_term_memory import search_long_term_memory
 
 
 @tool

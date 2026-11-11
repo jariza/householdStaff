@@ -1,5 +1,6 @@
 from langchain_core.tools import tool
 
+
 @tool
 def turn_on_garden_light(zone: str) -> str:
     """Turns on the lights in a specific area of the garden."""

@@ -1,7 +1,9 @@
 from fastapi import Request
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.store.base import BaseStore
+
 from state import AgentsState
+
 
 # Retrieves compiled graph registered in lifespan
 def get_graph(request: Request) -> CompiledStateGraph:

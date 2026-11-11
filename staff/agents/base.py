@@ -4,7 +4,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 from langgraph.store.base import BaseStore
 
-from longTermMemory import search_long_term_memory
+from long_term_memory import search_long_term_memory
 from mcp_catalog import load_tools_from_mcp_server
 
 from .commonPrompts import EMPTY_PRELOAD_MEM

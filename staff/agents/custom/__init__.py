@@ -5,8 +5,8 @@ import importlib
 import inspect
 import logging
 import pkgutil
-from pathlib import Path
 import re
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,12 @@
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
+from operator import add
+from textwrap import dedent
+from typing import Annotated, TypedDict
+
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import BaseTool
 from langgraph.config import get_stream_writer
 from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
@@ -6,19 +14,13 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.store.base import BaseStore
 from langgraph.types import Command
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
-from langchain_core.runnables import RunnableConfig
-from langchain_core.tools import BaseTool
-import logging
-from operator import add
-from textwrap import dedent
-from typing import Annotated, TypedDict
 
-from ..base import BaseAgent
-from ..commonPrompts import PRELOADED_MEM_USAGE
 from engines import EngineType
 from mcp_catalog import search_server_mcp_catalog
 from state import AgentsState, log_agent_state
+
+from ..base import BaseAgent
+from ..commonPrompts import PRELOADED_MEM_USAGE
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +87,7 @@ class GardenerAgent(BaseAgent):
         await self._search_for_useful_mcp(state, store)
 
         # Create and send the query
-        system_prompt = self.systemPrompt.format(timedate = f"{datetime.now(timezone.utc):%A, %d de %B de %Y - %H:%M UTC}") + PRELOADED_MEM_USAGE.format(mem=preloaded_mem)
+        system_prompt = self.systemPrompt.format(timedate = f"{datetime.now(UTC):%A, %d de %B de %Y - %H:%M UTC}") + PRELOADED_MEM_USAGE.format(mem=preloaded_mem)
         logger.debug("System prompt: %s", system_prompt)
         active_tools = await self._get_active_tools(state["mcp_server_in_use"], config)
         answer = await self.engine.ainvoke(EngineType.SMALL, "gardener", [SystemMessage(content = system_prompt)] + state["messages"], active_tools)
@@ -131,12 +133,12 @@ class GardenerAgent(BaseAgent):
             writer({"type": "memory_update", "agent": memory_update["agent"], "new_info": memory_update["new_info"]})
 
         final_msg = subgraph_result["messages"][-1]
-        final_msg.additional_kwargs["created_at"] = datetime.now(timezone.utc).isoformat()
+        final_msg.additional_kwargs["created_at"] = datetime.now(UTC).isoformat()
         logger.debug("Final message from gardener: %s", final_msg)
 
         return Command(
             update={
-                "messagesButler": [HumanMessage(content=final_msg.content, name="gardener", additional_kwargs={"created_at": datetime.now(timezone.utc).isoformat()})],
+                "messagesButler": [HumanMessage(content=final_msg.content, name="gardener", additional_kwargs={"created_at": datetime.now(UTC).isoformat()})],
                 "messagesGardener": final_msg,
                 "memories_to_update": subgraph_result.get("memories_to_update", []),
                 "next_recipient": None # Not required since final answer from agents always goes to butler

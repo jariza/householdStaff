@@ -1,17 +1,19 @@
 import asyncio
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request, HTTPException
-from fastapi.responses import StreamingResponse
-import httpx
 import json
+import logging
+import re
+from typing import Literal, Optional, get_args
+
+import httpx
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.store.base import BaseStore
 from langgraph.types import Command
-import logging
 from pydantic import BaseModel, Field, field_validator
-import re
-from typing import get_args, Literal, Optional
 
-from longTermMemory import store_or_update_long_term_memory
+from long_term_memory import store_or_update_long_term_memory
+
 from .common import ensure_state_initialized, get_graph, get_store
 
 logger = logging.getLogger(__name__)
@@ -37,14 +39,14 @@ async def dispatch_notification(message: str, notifier_url: str):
 ValidAlertAgents = Literal["butler", "gardener"]
 
 class ChatRequest(BaseModel):
-    user_input: Optional[str] = Field(default=None, description = "Request text")
+    user_input: str | None = Field(default=None, description = "Request text")
     user_id: int = Field(default=1, description="User ID") # Always 1 until multiuser is considered and implemented
-    alert_rcpt: Optional[str] = Field(default=None, description="Recipient agent in case of alert")
+    alert_rcpt: str | None = Field(default=None, description="Recipient agent in case of alert")
 
     @field_validator("alert_rcpt")
     @classmethod
     # Same validation than default one but hiding the list of valid options
-    def validate_alert_rcpt(cls, v: Optional[str]) -> Optional[str]:
+    def validate_alert_rcpt(cls, v: str | None) -> str | None:
         if v is None:
             return v
         if v not in set(get_args(ValidAlertAgents)):

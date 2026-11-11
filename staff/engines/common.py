@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+
 from langchain_core.messages import AIMessage, BaseMessage
+
 
 class EngineType(str, Enum):
     NORMAL = "normal"
