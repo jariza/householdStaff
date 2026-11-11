@@ -8,11 +8,9 @@ As I explore the ecosystem, I'll keep adding whatever catches my attention and f
 
 ## 💡 About This Project
 
-### Why this project exists
-This is a personal **pet project** created as a learning space. The goal is to learn how core mechanics work under the hood using state-graph primitives (LangGraph, FastAPI, and Server-Sent Events) rather than getting stuck relying strictly on off-the-shelf wrappers.
+This is a personal pet project and an experimental learning space. The goal is to explore how LLMs, multi-agent systems, memory management, RAG and other related components work under the hood, by experimenting with their underlying building blocks.
 
-### AI-Assisted, Hands-On Learning
-I use AI extensively as a coding partner. However, since this is meant as a learning sandbox, I prefer to do the coding myself. I wanted to get my hands dirty with the implementation and troubleshooting — taking the time to understand the underlying mechanics of state management, routing, and tools.
+I use AI extensively as a coding partner, but I prefer to handle the actual implementation and troubleshooting myself. The idea is to get hands-on experience and understand the mechanics behind the things I'm building.
 
 *(Full disclosure: this README file itself was 100% written by an AI to summarize my chaotic notes and codebase!)*
 
