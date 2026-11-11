@@ -1,6 +1,7 @@
 import logging
 from contextlib import AsyncExitStack, asynccontextmanager
 
+from cryptography.fernet import Fernet
 from dotenv import dotenv_values
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,7 @@ from persistence import create_persistence_resources
 config = dotenv_values(".env")
 AVOID_PERSISTENCE = config.get("AVOID_PERSISTENCE", "false").lower() == "true"
 DEBUG = config.get("DEBUG", "false").lower() == "true"
+TOOLCONFIG_ENCRYPTION_KEY = config.get("TOOLCONFIG_ENCRYPTION_KEY")
 GOOGLE_API_KEY = config.get("GOOGLE_API_KEY")
 LOCAL_OLLAMA_URL = config.get("LOCAL_OLLAMA_URL")
 LOG_LEVEL = config.get("LOG_LEVEL", "INFO").upper()
@@ -24,8 +26,8 @@ LOG_LEVEL_HTTP_CORE = config.get("LOG_LEVEL_HTTP_CORE", "INFO").upper()
 NOTIFIER_URL = config.get("NOTIFIER_URL")
 STORE_EMBEDDINGS_MODEL = config.get("STORE_EMBEDDINGS_MODEL")
 
-if not GOOGLE_API_KEY or not LOCAL_OLLAMA_URL or not NOTIFIER_URL or not STORE_EMBEDDINGS_MODEL:
-    raise RuntimeError("Missing variables in .env file: GOOGLE_API_KEY, LOCAL_OLLAMA_URL, NOTIFIER_URL or STORE_EMBEDDINGS_MODEL")
+if not GOOGLE_API_KEY or not LOCAL_OLLAMA_URL or not NOTIFIER_URL or not STORE_EMBEDDINGS_MODEL or not TOOLCONFIG_ENCRYPTION_KEY:
+    raise RuntimeError("Missing variables in .env file: GOOGLE_API_KEY, LOCAL_OLLAMA_URL, NOTIFIER_URL, STORE_EMBEDDINGS_MODEL or TOOLCONFIG_ENCRYPTION_KEY")
 
 # Logging config
 logging.basicConfig(
@@ -52,6 +54,7 @@ async def lifespan(app: FastAPI):
         app.state.notifier_url = NOTIFIER_URL
         app.state.store = store
         app.state.mcp_manager = MCPSessionManager("mcp_servers.yaml")
+        app.state.cipher_suite = Fernet(TOOLCONFIG_ENCRYPTION_KEY.encode())
 
         await populate_mcp_catalog("mcp_servers.yaml", store)
 

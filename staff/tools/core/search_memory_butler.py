@@ -13,5 +13,5 @@ async def search_memory_butler(search_text: str, config: RunnableConfig, store: 
     """Search long-term memory for relevant background information, user preferences, or past interactions when the immediate context is insufficient."""
 
     user_id = config.get("configurable", {}).get("user_id")
-    memory_namespace = (user_id, "longterm", "butler")
-    return await search_long_term_memory(search_text, memory_namespace, store=store, emptyMsg="No relevant information was found in the memory.")
+    agent_name = "butler"
+    return await search_long_term_memory(search_text, user_id, agent_name, store=store, emptyMsg="No relevant information was found in the memory.")

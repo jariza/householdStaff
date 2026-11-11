@@ -1,21 +1,62 @@
 import uuid
+from types import SimpleNamespace
 from typing import Annotated, Any
 
+from cryptography.fernet import Fernet
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/store", tags=["Store CRUD"])
 
+PROTECTED_NAMESPACE: str = "toolconfigenc"
+CONFIG_NAMESPACES = ["toolconfigenc", "toolconfigplain"]
+
+def _redact_item(item: Any) -> Any:
+    if item is None:
+        return None
+
+    raw_value = getattr(item, "value", None)
+
+    if isinstance(raw_value, dict):
+        redacted_value = {k: "REDACTED" for k in raw_value}
+    else:
+        redacted_value = "REDACTED"
+
+    return SimpleNamespace(
+            key=getattr(item, "key", None),
+            namespace=getattr(item, "namespace", ()),
+            value=redacted_value,
+            created_at=getattr(item, "created_at", None),
+            updated_at=getattr(item, "updated_at", None),
+        )
 
 # Helper function to perform a GET operation compatible with both sync (InMemoryStore) and async (AsyncSqliteStore) stores.
-async def _store_get(store, namespace: tuple, key: str):
+async def _store_get(store, namespace: tuple, key: str) -> Any:
     if hasattr(store, "aget"):
-        return await store.aget(namespace, key)
-    return store.get(namespace, key)
+        item = await store.aget(namespace, key)
+    else:
+        item = store.get(namespace, key)
+
+    if item is None:
+        return None
+
+    if PROTECTED_NAMESPACE in namespace:
+        return _redact_item(item)
+
+    return item
 
 
 # Helper function to perform a PUT operation compatible with both sync (InMemoryStore) and async (AsyncSqliteStore) stores.
-async def _store_put(store, namespace: tuple, key: str, value: dict):
+async def _store_put(store, namespace: tuple, key: str, value: dict, cipher: Fernet = None):
+    if PROTECTED_NAMESPACE in namespace:
+        if not cipher:
+            raise ValueError("No cipher suit.")
+        
+        value = {
+            k: cipher.encrypt(v.encode()).decode() if isinstance(v, str) else v
+            for k, v in value.items()
+        }
+
     if hasattr(store, "aput"):
         await store.aput(namespace, key, value)
     else:
@@ -27,8 +68,23 @@ async def _store_search(store, namespace: tuple | None = None, limit: int = 10, 
     prefix = namespace if namespace is not None else ()
     
     if hasattr(store, "asearch"):
-        return await store.asearch(prefix, limit=limit, offset=offset)
-    return store.search(prefix, limit=limit, offset=offset)
+        results = await store.asearch(prefix, limit=limit, offset=offset)
+    else:
+        results = store.search(prefix, limit=limit, offset=offset)
+
+    if not results:
+            return []
+
+    sanitized_results = []
+    for item in results:
+        item_namespace = getattr(item, "namespace", ())
+        
+        if PROTECTED_NAMESPACE in item_namespace:
+            sanitized_results.append(_redact_item(item))
+        else:
+            sanitized_results.append(item)
+
+    return sanitized_results
 
 # Helper function to perform a DELETE operation compatible with both sync (InMemoryStore) and async (AsyncSqliteStore) stores.
 async def _store_delete(store, namespace: tuple, key: str):
@@ -81,7 +137,7 @@ async def get_all_namespaces(
 
 
 # Create or update an item in the LangGraph store. Generates a UUID if no key is provided.
-# curl -X PUT -H "Content-Type: application/json" -d '{"namespace": ["1", "butler"], "texto": "El usuario prefiere el café solo y sin azúcar por las mañanas."}' "http://127.0.0.1:8000/store"
+# curl -X PUT -H "Content-Type: application/json" -d '{"namespace": ["1", "longerm", "butler"], "texto": "El usuario prefiere el café solo y sin azúcar por las mañanas."}' "http://127.0.0.1:8000/store"
 @router.put("", response_model=dict[str, str], summary="Create or update an item")
 async def put_item(item: StoreItemCreate, request: Request):
     store = request.app.state.store
@@ -89,9 +145,13 @@ async def put_item(item: StoreItemCreate, request: Request):
     
     # Generate UUID if key was not provided by user
     item_key = item.key if item.key else str(uuid.uuid4())
-    value = {"texto": item.texto}
+
+    if ns_tuple[1] in CONFIG_NAMESPACES:
+        value = {"config": item.texto}
+    else:
+        value = {"texto": item.texto}
     
-    await _store_put(store, ns_tuple, item_key, value)
+    await _store_put(store, ns_tuple, item_key, value, request.app.state.cipher_suite)
     
     return {
         "status": "success", 

@@ -13,5 +13,5 @@ async def search_memory_gardner(search_text: str, config: RunnableConfig, store:
     """Search long-term memory for plant records, past gardening interventions, or specific species care notes when immediate context is insufficient."""
 
     user_id = config.get("configurable", {}).get("user_id")
-    memory_namespace = (user_id, "longterm", "gardener")
-    return await search_long_term_memory(search_text, memory_namespace, store=store, emptyMsg="No relevant information was found in the memory.")
+    agent_name = "gardener"
+    return await search_long_term_memory(search_text, user_id, agent_name, store=store, emptyMsg="No relevant information was found in the memory.")

@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import re
-from typing import Literal, Optional, get_args
+from typing import Annotated, Literal, get_args
 
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request
@@ -33,7 +33,7 @@ async def dispatch_notification(message: str, notifier_url: str):
     async with httpx.AsyncClient(timeout=5.0) as client:
         try:
             await client.post(notifier_url, json={"message": message, "silent_notification": silent_notification})
-        except Exception as e:
+        except httpx.RequestError as e:
             logger.error(f"Couldn't connect to notifier: {e}")
 
 ValidAlertAgents = Literal["butler", "gardener"]
@@ -56,7 +56,13 @@ class ChatRequest(BaseModel):
 @router.post("/alert")
 @router.post("/chat")
 @router.post("/consolidate-memory")
-async def flow_endpoint(request: Request, background_tasks: BackgroundTasks, data: ChatRequest = Body(default_factory=ChatRequest), graph: CompiledStateGraph = Depends(get_graph), store: BaseStore = Depends(get_store)):
+async def flow_endpoint(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    data: Annotated[ChatRequest, Body(default_factory=ChatRequest)],
+    graph: Annotated[CompiledStateGraph, Depends(get_graph)],
+    store: Annotated[BaseStore, Depends(get_store)],
+):
     if request.url.path.endswith("/alert"):
         if not data.alert_rcpt:
             raise HTTPException(status_code=400, detail="alert_rcpt is required when calling /alert")
@@ -97,7 +103,7 @@ async def flow_endpoint(request: Request, background_tasks: BackgroundTasks, dat
                     chunk_data = chunk["data"]
                     if chunk_data.get("type") == "memory_update":
                         logger.info("Memory update to sent to background (from %s): %s", chunk_data.get("agent"), chunk_data.get("new_info"))
-                        background_tasks.add_task(store_or_update_long_term_memory, chunk_data.get("new_info"), (str(data.user_id), chunk_data.get("agent")), request.app.state.local_ollama_url, store)
+                        background_tasks.add_task(store_or_update_long_term_memory, chunk_data.get("new_info"), (str(data.user_id), "longterm", chunk_data.get("agent")), request.app.state.local_ollama_url, store)
                 if chunk["type"] == "updates":
                     for node_name, updates in chunk["data"].items():
                         if node_name == "butler" and "messagesButler" in updates:
