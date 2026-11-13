@@ -97,7 +97,7 @@ def build_graph(engine) -> StateGraph:
     agent_tools_cfg = _load_agent_tools_config("agents_tools.yaml")
 
     # Base tools
-    butler_base_tools = ["delegate_to_agent", "turn_on_garden_light", "search_memory_butler", "save_or_update_butler_memory", "discover_and_load_mcp_butler"]
+    butler_base_tools = ["delegate_to_agent", "turn_on_garden_light", "search_memory_butler", "save_or_update_butler_memory", "discover_and_load_mcp_butler", "read_emails"]
     gardener_base_tools = ["turn_on_garden_light", "search_memory_gardner", "save_or_update_gardener_memory", "discover_and_load_mcp_gardener"]
 
     # dict with available tools
