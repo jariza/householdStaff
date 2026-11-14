@@ -45,6 +45,7 @@ Components across the system rely on LangGraph's persistence store to manage sta
 | **`longterm`** | `<user_id>` | `<agent_name>` (e.g., `butler`, `gardener`) | Persistent conversational facts and context scoped per agent. Each item represents an individual memory entry. |
 | **`mcpcatalog`** | `0` | `mcpcatalog` | Global registry of available MCP servers, regenerated dynamically on every application startup. Each item represents an MCP definition. |
 | **`toolconfig`** | `<user_id>` | `enc` \| `plain` | Tool-specific settings (API keys, parameters), split between encrypted (`enc`) and plaintext (`plain`) storage. Each item key matches the target tool's name. |
+| **`toolconfigschema`** | `0` | `toolconfigschema` | Global registry of configuration schemas (`plain` and `enc` specs) for configurable tools, regenerated dynamically on application startup. Each item key matches the target tool's name. |
 
 ---
 
@@ -202,6 +203,46 @@ Adding new capabilities is modular and requires zero changes to core graph files
       args: ["--local-timezone", "Europe/Madrid"]
     - mcp_weather_server
   ```
+
+### Configurable Tools (`@tool_config_spec`)
+
+Tools requiring user-supplied settings (credentials, endpoints, parameters) declare their metadata via `@tool_config_spec(...)`, which is synced to ("toolconfigschema", "0", "toolconfigschema") at startup so external UIs can dynamically render configuration forms:
+
+* **Top-level keys:** `plain` (stored in `("toolconfig", <user_id>, "plain")`) and/or `enc` (encrypted at rest in `("toolconfig", <user_id>, "enc")`).
+* **Value shapes per namespace:**
+  * **Single-value field:** A field descriptor (`{"required": bool, "label": str}`) directly under plain or enc when the namespace stores a single scalar value.
+  * **Multi-field object:** A dictionary mapping parameter names to field descriptors (`{<field_name>: {"required": bool, "label": str}}`) when the namespace stores a JSON object.
+
+**Example decorator & resulting store entry (`key: "read_imap"`):**
+
+```python
+@tool
+@tool_config_spec({
+    "plain": {
+        "host": {"required": True, "label": "IMAP server host"},
+        "port": {"required": True, "label": "IMAP server port"},
+        "user": {"required": True, "label": "IMAP user"},
+    },
+    "enc": {"required": True, "label": "IMAP user password"},
+})
+async def read_imap(...):
+    ...
+```
+
+```json
+{
+  "name": "read_imap",
+  "description": "Tool description exposed to the LLM.",
+  "tool_config_spec": {
+    "plain": {
+      "host": { "required": true, "label": "IMAP server host" },
+      "port": { "required": true, "label": "IMAP server port" },
+      "user": { "required": true, "label": "IMAP user" }
+    },
+    "enc": { "required": true, "label": "IMAP user password" }
+  }
+}
+```
 
 ## 🙈 Elephant in the Room (Technical Debt)
 

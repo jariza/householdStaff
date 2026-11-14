@@ -6,10 +6,9 @@ from cryptography.fernet import Fernet
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-router = APIRouter(prefix="/store", tags=["Store CRUD"])
+from tools import TOOLS_CONFIG_NAMESPACE, TOOLS_PROTECTED_SUBNAMESPACE
 
-CONFIG_NAMESPACE = "toolconfig"
-PROTECTED_SUBNAMESPACE: str = "enc"
+router = APIRouter(prefix="/store", tags=["Store CRUD"])
 
 def _redact_item(item: Any) -> Any:
     if item is None:
@@ -20,7 +19,7 @@ def _redact_item(item: Any) -> Any:
     if isinstance(raw_value, dict):
         redacted_value = {k: "REDACTED" for k in raw_value}
     else:
-        redacted_value = "REDACTED"
+        redacted_value = {"config": "REDACTED"}
 
     return SimpleNamespace(
             key=getattr(item, "key", None),
@@ -40,7 +39,7 @@ async def _store_get(store, namespace: tuple, key: str) -> Any:
     if item is None:
         return None
 
-    if namespace[2] == PROTECTED_SUBNAMESPACE:
+    if namespace[2] == TOOLS_PROTECTED_SUBNAMESPACE:
         return _redact_item(item)
 
     return item
@@ -48,7 +47,7 @@ async def _store_get(store, namespace: tuple, key: str) -> Any:
 
 # Helper function to perform a PUT operation compatible with both sync (InMemoryStore) and async (AsyncSqliteStore) stores.
 async def _store_put(store, namespace: tuple, key: str, value: dict, cipher: Fernet = None):
-    if namespace[2] == PROTECTED_SUBNAMESPACE:
+    if namespace[2] == TOOLS_PROTECTED_SUBNAMESPACE:
         if not cipher:
             raise ValueError("No cipher suit.")
         
@@ -79,7 +78,7 @@ async def _store_search(store, namespace: tuple | None = None, limit: int = 10, 
     for item in results:
         item_namespace = getattr(item, "namespace", ())
         
-        if item_namespace[2] == PROTECTED_SUBNAMESPACE:
+        if item_namespace[2] == TOOLS_PROTECTED_SUBNAMESPACE:
             sanitized_results.append(_redact_item(item))
         else:
             sanitized_results.append(item)
@@ -146,7 +145,7 @@ async def put_item(item: StoreItemCreate, request: Request):
     # Generate UUID if key was not provided by user
     item_key = item.key if item.key else str(uuid.uuid4())
 
-    if ns_tuple[0] == CONFIG_NAMESPACE:
+    if ns_tuple[0] == TOOLS_CONFIG_NAMESPACE:
         value = {"config": item.texto}
     else:
         value = {"texto": item.texto}

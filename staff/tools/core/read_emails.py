@@ -11,7 +11,7 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import InjectedStore
 from langgraph.store.base import BaseStore
 
-from tools import tool_config_load
+from ..tool_config_load import tool_config_load, tool_config_spec
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,14 @@ def _decode_text(coded_text):
     return out_text
 
 @tool
+@tool_config_spec({
+    "plain": {
+        "host": {"required": True, "label": "IMAP server host"},
+        "port": {"required": True, "label": "IMAP server port"},
+        "user": {"required": True, "label": "IMAP user"},
+    },
+    "enc": {"required": True, "label": "IMAP user password"},
+})
 def read_emails(sender: list[str], config: RunnableConfig, store: Annotated[BaseStore, InjectedStore()]) -> str:
     """
     Retrieves and permanently deletes emails from the inbox for specific senders.
@@ -63,7 +71,7 @@ def read_emails(sender: list[str], config: RunnableConfig, store: Annotated[Base
         return "ERROR: Wrong configuration format."
 
     try:
-        with imaplib.IMAP4_SSL(host, port) as M:
+        with imaplib.IMAP4_SSL(host, int(port)) as M:
             logger.debug("Reading emails from %s", sender)
             M.login(user, mail_pass)
 

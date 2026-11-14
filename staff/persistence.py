@@ -1,9 +1,9 @@
 # Persistence resources creation
 # stack, stack that manages the lifecycle of async resources
 # embeddings, embeddings to use in the store
-# debug, debug flag
-async def create_persistence_resources(stack, embeddings, debug):
-    if debug:
+# persis_memory, if True persis to memory
+async def create_persistence_resources(stack, embeddings, persist_memory):
+    if persist_memory:
         from langgraph.checkpoint.memory import InMemorySaver
         from langgraph.store.memory import InMemoryStore
         checkpointer = InMemorySaver()

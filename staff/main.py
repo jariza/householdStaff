@@ -6,7 +6,9 @@ from dotenv import dotenv_values
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_community.embeddings import FastEmbedEmbeddings
+from langchain_core.tools import BaseTool
 
+import tools
 from engines import DebugEngine, LLMEngine
 from graph import build_graph
 from http_handlers import flow_router, long_term_memory_crud_router
@@ -15,7 +17,7 @@ from persistence import create_persistence_resources
 
 # Load and check configuration
 config = dotenv_values(".env")
-AVOID_PERSISTENCE = config.get("AVOID_PERSISTENCE", "false").lower() == "true"
+FORCED_PERSISTENCE = config.get("FORCED_PERSISTENCE", "none").lower()
 DEBUG = config.get("DEBUG", "false").lower() == "true"
 TOOLCONFIG_ENCRYPTION_KEY = config.get("TOOLCONFIG_ENCRYPTION_KEY")
 GOOGLE_API_KEY = config.get("GOOGLE_API_KEY")
@@ -47,7 +49,18 @@ async def lifespan(app: FastAPI):
         engine = DebugEngine() if DEBUG else LLMEngine(api_key=GOOGLE_API_KEY)
         graph = build_graph(engine)
 
-        checkpointer, store = await create_persistence_resources(stack, store_embeddings, DEBUG or AVOID_PERSISTENCE)
+        persist_memory = DEBUG
+        if FORCED_PERSISTENCE == "memory":
+            persist_memory = True
+        elif FORCED_PERSISTENCE == "db":
+            persist_memory = False
+
+        checkpointer, store = await create_persistence_resources(stack, store_embeddings, persist_memory)
+
+        # dict with available tools
+        available_tools = [func for name, func in tools.__dict__.items() if isinstance(func, BaseTool) and not name.startswith("_")]
+        await tools.populate_tool_specs(available_tools, store)
+
         app.state.graph = graph.compile(checkpointer=checkpointer, store=store)
         app.state.engine = engine
         app.state.local_ollama_url = LOCAL_OLLAMA_URL
