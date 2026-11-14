@@ -32,6 +32,22 @@ The application models a domestic household staff architecture:
 
 ---
 
+## 🗄️ Store Architecture & Namespaces
+
+Components across the system rely on LangGraph's persistence store to manage state, configuration, and catalogs using a 3-tuple namespace convention:
+
+`(memory_type, user_id, subcategory)`
+
+*(Note: While the architecture supports multi-user isolation via `user_id`, single-user deployments currently default to `1` for user-scoped records and `0` for global system data).*
+
+| `memory_type` | `user_id` | `subcategory` | Purpose & Item Structure |
+| :--- | :--- | :--- | :--- |
+| **`longterm`** | `<user_id>` | `<agent_name>` (e.g., `butler`, `gardener`) | Persistent conversational facts and context scoped per agent. Each item represents an individual memory entry. |
+| **`mcpcatalog`** | `0` | `mcpcatalog` | Global registry of available MCP servers, regenerated dynamically on every application startup. Each item represents an MCP definition. |
+| **`toolconfig`** | `<user_id>` | `enc` \| `plain` | Tool-specific settings (API keys, parameters), split between encrypted (`enc`) and plaintext (`plain`) storage. Each item key matches the target tool's name. |
+
+---
+
 ## 🚀 Getting Started
 
 ### 1. Prerequisites & Environment Setup
@@ -97,7 +113,7 @@ The core application (`staff`) supports two distinct execution modes controlled 
 ### 2. Gemini / Live Mode (`DEBUG=false`)
 * **Purpose**: Full agent orchestration using Google's Gemini models.
 * **Engine**: Uses `LLMEngine` with multi-tier model fallbacks (`gemini-3.6-flash`, `gemini-3.5-flash`, etc. for Butler, and lighter flash models for specialists).
-* **Storage**: Persistent SQLite databases (`langgraph_checkpoint.db` for execution threads, `langgraph_store.db` for long-term vector-backed store).
+* **Storage**: Persistent SQLite databases (`langgraph_checkpoint.db` for execution threads, `langgraph_store.db` for namespaced long-term memories, tool configs, and MCP catalog).
 * **Background Processing**: Integrates with local Ollama running `qwen2.5:1.5b` to automatically consolidate and merge long-term memories without blocking conversation turns.
 
 ---
@@ -139,7 +155,7 @@ The backend (`staff`) exposes several core FastAPI routes:
 * **`POST /chat`**: Main SSE streaming endpoint for user interactions with the Butler graph.
 * **`POST /alert`**: Endpoint for background/scheduled triggers. Allows proactive notifications sent directly via `tgNotif`.
 * **`POST /consolidate-memory`**: Triggers the `MemoryConsolidator` agent to analyze past conversations (>24h) and extract persistent long-term memories.
-* **`GET|PUT|DELETE /store/*`**: Full CRUD interface for inspecting and managing the underlying long-term vector store.
+* **`GET|PUT|DELETE /store/*`**: Full CRUD interface for inspecting and managing namespaced records in the store.
 
 ---
 

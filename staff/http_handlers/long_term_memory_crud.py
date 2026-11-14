@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/store", tags=["Store CRUD"])
 
-PROTECTED_NAMESPACE: str = "toolconfigenc"
-CONFIG_NAMESPACES = ["toolconfigenc", "toolconfigplain"]
+CONFIG_NAMESPACE = "toolconfig"
+PROTECTED_SUBNAMESPACE: str = "enc"
 
 def _redact_item(item: Any) -> Any:
     if item is None:
@@ -40,7 +40,7 @@ async def _store_get(store, namespace: tuple, key: str) -> Any:
     if item is None:
         return None
 
-    if PROTECTED_NAMESPACE in namespace:
+    if namespace[2] == PROTECTED_SUBNAMESPACE:
         return _redact_item(item)
 
     return item
@@ -48,7 +48,7 @@ async def _store_get(store, namespace: tuple, key: str) -> Any:
 
 # Helper function to perform a PUT operation compatible with both sync (InMemoryStore) and async (AsyncSqliteStore) stores.
 async def _store_put(store, namespace: tuple, key: str, value: dict, cipher: Fernet = None):
-    if PROTECTED_NAMESPACE in namespace:
+    if namespace[2] == PROTECTED_SUBNAMESPACE:
         if not cipher:
             raise ValueError("No cipher suit.")
         
@@ -79,7 +79,7 @@ async def _store_search(store, namespace: tuple | None = None, limit: int = 10, 
     for item in results:
         item_namespace = getattr(item, "namespace", ())
         
-        if PROTECTED_NAMESPACE in item_namespace:
+        if item_namespace[2] == PROTECTED_SUBNAMESPACE:
             sanitized_results.append(_redact_item(item))
         else:
             sanitized_results.append(item)
@@ -137,7 +137,7 @@ async def get_all_namespaces(
 
 
 # Create or update an item in the LangGraph store. Generates a UUID if no key is provided.
-# curl -X PUT -H "Content-Type: application/json" -d '{"namespace": ["1", "longerm", "butler"], "texto": "El usuario prefiere el café solo y sin azúcar por las mañanas."}' "http://127.0.0.1:8000/store"
+# curl -X PUT -H "Content-Type: application/json" -d '{"namespace": ["longerm", "1", "butler"], "texto": "El usuario prefiere el café solo y sin azúcar por las mañanas."}' "http://127.0.0.1:8000/store"
 @router.put("", response_model=dict[str, str], summary="Create or update an item")
 async def put_item(item: StoreItemCreate, request: Request):
     store = request.app.state.store
@@ -146,7 +146,7 @@ async def put_item(item: StoreItemCreate, request: Request):
     # Generate UUID if key was not provided by user
     item_key = item.key if item.key else str(uuid.uuid4())
 
-    if ns_tuple[1] in CONFIG_NAMESPACES:
+    if ns_tuple[0] == CONFIG_NAMESPACE:
         value = {"config": item.texto}
     else:
         value = {"texto": item.texto}

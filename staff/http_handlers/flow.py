@@ -103,7 +103,7 @@ async def flow_endpoint(
                     chunk_data = chunk["data"]
                     if chunk_data.get("type") == "memory_update":
                         logger.info("Memory update to sent to background (from %s): %s", chunk_data.get("agent"), chunk_data.get("new_info"))
-                        background_tasks.add_task(store_or_update_long_term_memory, chunk_data.get("new_info"), (str(data.user_id), "longterm", chunk_data.get("agent")), request.app.state.local_ollama_url, store)
+                        background_tasks.add_task(store_or_update_long_term_memory, chunk_data.get("new_info"), ("longterm", str(data.user_id), chunk_data.get("agent")), request.app.state.local_ollama_url, store)
                 if chunk["type"] == "updates":
                     for node_name, updates in chunk["data"].items():
                         if node_name == "butler" and "messagesButler" in updates:

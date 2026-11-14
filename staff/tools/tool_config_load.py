@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # Returns the configuration, None if no configuration was found
 async def tool_config_load(user_id: int, toolname: str, is_encrypted: bool, store: BaseStore) -> str:
     logger.debug("Searching in configuration memory, tool %s, in_encrypted: %s", toolname, is_encrypted)
-    memory_name = "toolconfigenc" if is_encrypted else "toolconfigplain"
-    item = await store.aget((user_id, memory_name, memory_name), toolname)
+    memory_subname = "enc" if is_encrypted else "plain"
+    item = await store.aget(("toolconfig", user_id, memory_subname), toolname)
     logger.debug("Configuration found: %s", item["config"])
     return item["config"]

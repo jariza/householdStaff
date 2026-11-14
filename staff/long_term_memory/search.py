@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Returns the search result
 async def search_long_term_memory(message: str, user_id: str, agent_name: str, store: BaseStore, emptyMsg: str) -> str:
     logger.debug("Searching in long term memory, agent %s, message: %s", agent_name, message)
-    raw_results = await store.asearch((user_id, "longterm", agent_name), query=message, limit=2)
+    raw_results = await store.asearch(("longterm", user_id, agent_name), query=message, limit=2)
     logger.debug("Raw search results: %r", raw_results)
 
     # Filter the raw results based on score
