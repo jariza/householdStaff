@@ -53,7 +53,11 @@ Components across the system rely on LangGraph's persistence store to manage sta
 
 ### 1. Prerequisites & Environment Setup
 
-Ensure you have **Python 3.10+** installed.
+Ensure you have **Python 3.10+** installed for local execution.
+
+For containerized deployment, Docker Engine and the Docker Compose plugin are required.
+
+The application can be run either locally (installing each module's dependencies) or as a complete stack using the provided Dockerfiles and `docker-compose.yml`.
 
 #### Step 1: Clone and set up virtual environment
 ```bash
@@ -70,34 +74,46 @@ pip install -r tgRecv/requirements.txt
 pip install -r tgNotif/requirements.txt
 ```
 
-#### Step 3: Configure Environment Variables & Tool Mappings
-Copy the provided `.env.dist` templates to `.env` in each respective folder, and set up the optional tool configuration template:
+#### Step 3: Directory Structure (`CONFIG_DIR` & `DATA_DIR`)
+Configuration and runtime persistence are decoupled from the source directories via environment variables.
+- **`CONFIG_DIR`** *(default: `config`)*: Supported by `staff`, `tgRecv`, and `tgNotif`. Specifies where `.env` and YAML configuration files are read from. By default, each module looks for its configuration under its own directory.
+- **`DATA_DIR`** *(default: `data`)*: Supported by `staff`. Specifies where persistence files are stored. By default, the directory is relative to the `staff` module.
+
+For Docker deployments, both paths are explicitly set inside the containers and mapped to directories on the host.
+
+#### Step 4: Configure Environment Variables & Tool Mappings
+Create the `config` directories (or your custom `CONFIG_DIR` paths) and copy the provided `.dist` templates into them:
 
 ```bash
-cp staff/.env.dist staff/.env
-cp staff/agents_tools.yaml.dist staff/agents_tools.yaml
-cp staff/mcp_servers.yaml.dist staff/mcp_servers.yaml
-cp tgRecv/.env.dist tgRecv/.env
-cp tgNotif/.env.dist tgNotif/.env
+mkdir -p staff/config tgRecv/config tgNotif/config
+
+cp staff/.env.dist staff/config/.env
+cp staff/agents_tools.yaml.dist staff/config/agents_tools.yaml
+cp staff/mcp_servers.yaml.dist staff/config/mcp_servers.yaml
+cp tgRecv/.env.dist tgRecv/config/.env
+cp tgNotif/.env.dist tgNotif/config/.env
 ```
 
 1. **`staff/.env`**:
    - `DEBUG`: Set to `true` for offline testing or `false` to use live LLMs.
    - `GOOGLE_API_KEY`: Your Gemini API key (required when `DEBUG=false`).
    - `LOCAL_OLLAMA_URL`: URL for local Ollama service (e.g., `http://localhost:11434`), used for background memory deduplication and merging via `qwen2.5:1.5b`.
-   - `NOTIFIER_URL`: Webhook URL for outbound notifications (e.g., `http://127.0.0.1:8001/notify`).
-   - `STORE_EMBEDDINGS_MODEL`: FastEmbed model name (e.g., `sentence-transformers/all-MiniLM-L6-v2`).
+   - `NOTIFIER_URL` *(default: `http://tgnotif:8001/notify`)*: Webhook URL for outbound notifications (e.g., `http://127.0.0.1:8001/notify`).
+   - `STORE_EMBEDDINGS_MODEL` *(default: `sentence-transformers/all-MiniLM-L6-v2`)*: FastEmbed model name (e.g., `sentence-transformers/all-MiniLM-L6-v2`).
 
 2. **`tgRecv/.env`**:
    - `TELEGRAM_BOT_TOKEN`: Your Telegram Bot API token from `@BotFather`.
    - `ALLOWED_USER_ID`: Your numeric Telegram User ID for authorization.
-   - `BUTLER_API_URL`: Backend endpoint URL (e.g., `http://127.0.0.1:8000/chat`).
+   - `BUTLER_API_URL` *(default: `http://staff:8000/chat`)*: Backend endpoint URL (e.g., `http://127.0.0.1:8000/chat`).
 
 3. **`tgNotif/.env`**:
    - `TELEGRAM_BOT_TOKEN`: Same Telegram Bot API token.
    - `DESTINATION_CHAT_ID`: Telegram Chat ID where notifications should be sent.
 
-4. **`staff/mcp_servers.yaml`**:
+4. **`staff/config/agents_tools.yaml`**:
+   - Dynamically binds additional tools to specific agents, on top of the core tools already hardcoded per agent in the source code.
+
+5. **`staff/mcp_servers.yaml`**:
    - Configures the list of MCP servers to be initialized at startup. You can specify standalone servers or pass specific arguments/timezones (e.g., `mcp_server_time` with timezone arguments).
 
 ---
@@ -123,25 +139,59 @@ The core application (`staff`) supports two distinct execution modes controlled 
 
 To run the complete system, start the services in separate terminal sessions:
 
-#### Step 1: Start Ollama (Required for Memory Merging in Live Mode)
+### Step 1: Start Ollama (Required for Memory Merging in Live Mode)
 Ensure Ollama is running with the required model:
 ```bash
 ollama run qwen2.5:1.5b
 ```
 
-#### Step 2: Start Core Backend (`staff`)
+### Step 2 – Docker Deployment: Run with Docker Compose
+Each module has its own `Dockerfile`, orchestrated through the root-level `docker-compose.yml`.
+
+The Docker deployment uses the following host directory structure:
+
+```text
+householdStaff/
+├── docker-compose.yml
+├── config/
+│   ├── staff/
+│   ├── tgNotif/
+│   └── tgRecv/
+├── data/
+│   └── staff/
+├── staff/
+├── tgNotif/
+└── tgRecv/
+```
+
+Configuration files are mounted read-only, while persistent data is stored in the host directories.
+
+From the project root, build and start the stack:
+
+```bash
+docker compose up -d --build
+```
+
+The three services communicate through the Docker Compose network using their service names (`staff`, `tgnotif`, `tgRecv`). The default `NOTIFIER_URL` and `BUTLER_API_URL` values are already configured accordingly.
+
+Configuration files are stored under `config/<service>/`, while persistent data for `staff` is stored under `data/staff/`.
+
+### Step 2 – Local Execution: Start modules individually
+To run the complete system without Docker, start the services in separate terminal sessions:
+
+##### Start Core Backend (`staff`)
 ```bash
 cd staff
 uvicorn main:app --reload --port 8000
 ```
 
-#### Step 3: Start Telegram Outbound Notifier (`tgNotif`)
+##### Start Telegram Outbound Notifier (`tgNotif`)
 ```bash
 cd tgNotif
 uvicorn main:app --reload --port 8001
 ```
 
-#### Step 4: Start Telegram Bot Receiver (`tgRecv`)
+##### Start Telegram Bot Receiver (`tgRecv`)
 ```bash
 cd tgRecv
 python main.py
@@ -247,7 +297,6 @@ async def read_imap(...):
 ## 🙈 Elephant in the Room (Technical Debt)
 
 Yes, I know...
-- Yes, I know this project is screaming for Docker containers and `docker compose`.
 - Yes, I know there are values in the code that should be living in config files.
 - Yes, I know I'm mixing python code and system prompts in the same place.
 

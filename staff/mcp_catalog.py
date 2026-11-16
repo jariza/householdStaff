@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 from contextlib import AsyncExitStack
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -17,7 +18,7 @@ MCP_CATALOG_NAMESPACE = ("0", "mcpcatalog", "mcpcatalog")
 
 # Avoid re-opening MCP servers
 class MCPSessionManager:
-    def __init__(self, yaml_path: str):
+    def __init__(self, yaml_path: Path):
         self.active_servers: dict[str, dict[str, Any]] = {}
         self.servers_config = _load_mcp_catalog_config(yaml_path)
 
@@ -74,7 +75,7 @@ class MCPSessionManager:
         self.active_servers.clear()
 
 # Load MCP catalog yaml file
-def _load_mcp_catalog_config(yaml_path: str) -> dict[str, Any]:
+def _load_mcp_catalog_config(yaml_path: Path) -> dict[str, Any]:
     if not os.path.exists(yaml_path):
         logger.warning(f"MCP catalog file {yaml_path} not found. Proceeding with empty MCP catalog.")
         return {}
@@ -108,7 +109,7 @@ def _load_mcp_catalog_config(yaml_path: str) -> dict[str, Any]:
     return servers_config
 
 # Load MCP catalog from yaml file
-async def populate_mcp_catalog(yaml_path: str, store: BaseStore):
+async def populate_mcp_catalog(yaml_path: Path, store: BaseStore):
 
     # Clean up current catalog
     items_existentes = await store.asearch(MCP_CATALOG_NAMESPACE, query="")

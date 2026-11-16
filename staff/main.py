@@ -1,22 +1,27 @@
 import logging
+import os
 from contextlib import AsyncExitStack, asynccontextmanager
-
-from cryptography.fernet import Fernet
-from dotenv import dotenv_values
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from langchain_community.embeddings import FastEmbedEmbeddings
-from langchain_core.tools import BaseTool
+from pathlib import Path
 
 import tools
+from cryptography.fernet import Fernet
+from dotenv import dotenv_values
 from engines import DebugEngine, LLMEngine
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from graph import build_graph
 from http_handlers import flow_router, long_term_memory_crud_router
+from langchain_community.embeddings import FastEmbedEmbeddings
+from langchain_core.tools import BaseTool
 from mcp_catalog import MCPSessionManager, populate_mcp_catalog
 from persistence import create_persistence_resources
 
+# Get config and data paths
+CONFIG_DIR = Path(os.getenv("CONFIG_DIR", "config"))
+DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
+
 # Load and check configuration
-config = dotenv_values(".env")
+config = dotenv_values(CONFIG_DIR / ".env")
 FORCED_PERSISTENCE = config.get("FORCED_PERSISTENCE", "none").lower()
 DEBUG = config.get("DEBUG", "false").lower() == "true"
 TOOLCONFIG_ENCRYPTION_KEY = config.get("TOOLCONFIG_ENCRYPTION_KEY")
@@ -25,11 +30,11 @@ LOCAL_OLLAMA_URL = config.get("LOCAL_OLLAMA_URL")
 LOG_LEVEL = config.get("LOG_LEVEL", "INFO").upper()
 LOG_LEVEL_AIOSQLITE = config.get("LOG_LEVEL_AIOSQLITE", "INFO").upper()
 LOG_LEVEL_HTTP_CORE = config.get("LOG_LEVEL_HTTP_CORE", "INFO").upper()
-NOTIFIER_URL = config.get("NOTIFIER_URL")
-STORE_EMBEDDINGS_MODEL = config.get("STORE_EMBEDDINGS_MODEL")
+NOTIFIER_URL = config.get("NOTIFIER_URL", "http://tgNotif:8001/notify")
+STORE_EMBEDDINGS_MODEL = config.get("STORE_EMBEDDINGS_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
-if not GOOGLE_API_KEY or not LOCAL_OLLAMA_URL or not NOTIFIER_URL or not STORE_EMBEDDINGS_MODEL or not TOOLCONFIG_ENCRYPTION_KEY:
-    raise RuntimeError("Missing variables in .env file: GOOGLE_API_KEY, LOCAL_OLLAMA_URL, NOTIFIER_URL, STORE_EMBEDDINGS_MODEL or TOOLCONFIG_ENCRYPTION_KEY")
+if not GOOGLE_API_KEY or not LOCAL_OLLAMA_URL or not TOOLCONFIG_ENCRYPTION_KEY:
+    raise RuntimeError("Missing variables in .env file: GOOGLE_API_KEY, LOCAL_OLLAMA_URL or TOOLCONFIG_ENCRYPTION_KEY")
 
 # Logging config
 logging.basicConfig(
@@ -47,7 +52,7 @@ async def lifespan(app: FastAPI):
     async with AsyncExitStack() as stack:
 
         engine = DebugEngine() if DEBUG else LLMEngine(api_key=GOOGLE_API_KEY)
-        graph = build_graph(engine)
+        graph = build_graph(engine, CONFIG_DIR)
 
         persist_memory = DEBUG
         if FORCED_PERSISTENCE == "memory":
@@ -55,7 +60,7 @@ async def lifespan(app: FastAPI):
         elif FORCED_PERSISTENCE == "db":
             persist_memory = False
 
-        checkpointer, store = await create_persistence_resources(stack, store_embeddings, persist_memory)
+        checkpointer, store = await create_persistence_resources(stack, store_embeddings, persist_memory, DATA_DIR)
 
         # dict with available tools
         available_tools = [func for name, func in tools.__dict__.items() if isinstance(func, BaseTool) and not name.startswith("_")]
@@ -66,10 +71,10 @@ async def lifespan(app: FastAPI):
         app.state.local_ollama_url = LOCAL_OLLAMA_URL
         app.state.notifier_url = NOTIFIER_URL
         app.state.store = store
-        app.state.mcp_manager = MCPSessionManager("mcp_servers.yaml")
+        app.state.mcp_manager = MCPSessionManager(CONFIG_DIR / "mcp_servers.yaml")
         app.state.cipher_suite = Fernet(TOOLCONFIG_ENCRYPTION_KEY.encode())
 
-        await populate_mcp_catalog("mcp_servers.yaml", store)
+        await populate_mcp_catalog(CONFIG_DIR / "mcp_servers.yaml", store)
 
         yield
 

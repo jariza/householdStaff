@@ -1,15 +1,19 @@
 # Telegram notification service
 # Asynchronous service  that exposes an HTTP endpoint to send messages to a specific Telegram chat via the Telegram Bot API.
 
+import logging
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+import httpx
 from dotenv import dotenv_values
 from fastapi import FastAPI, HTTPException, Request
-import httpx
-import logging
 from pydantic import BaseModel
 
 # Load and check configuration
-config = dotenv_values(".env")
+CONFIG_DIR = Path(os.getenv("CONFIG_DIR", "config"))
+config = dotenv_values(CONFIG_DIR / ".env")
 
 DESTINATION_CHAT_ID = config.get("DESTINATION_CHAT_ID")
 LOG_LEVEL = config.get("LOG_LEVEL", "INFO").upper()

@@ -1,0 +1,32 @@
+services:
+
+  staff:
+    build: ./staff
+    container_name: household-staff
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      CONFIG_DIR: /config
+      DATA_DIR: /data
+    volumes:
+      - ./config/staff:/config:ro
+      - ./data/staff:/data
+
+  tgnotif:
+    build: ./tgNotif
+    container_name: household-tgnotif
+    restart: unless-stopped
+    environment:
+      CONFIG_DIR: /config
+    volumes:
+      - ./config/tgNotif:/config:ro
+
+  tgrecv:
+    build: ./tgRecv
+    container_name: household-tgrecv
+    restart: unless-stopped
+    environment:
+      CONFIG_DIR: /config
+    volumes:
+      - ./config/tgRecv:/config:ro

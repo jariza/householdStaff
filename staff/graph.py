@@ -1,14 +1,10 @@
 import logging
 import os
+from pathlib import Path
 from typing import get_args
 
-import yaml
-from langchain_core.messages import AIMessage
-from langchain_core.runnables import RunnableConfig
-from langchain_core.tools import BaseTool
-from langgraph.graph import START, StateGraph
-
 import tools
+import yaml
 from agents import (
     CUSTOM_AGENTS,
     ButlerAgent,
@@ -17,12 +13,16 @@ from agents import (
     UserInput,
 )
 from http_handlers import ValidAlertAgents
+from langchain_core.messages import AIMessage
+from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import BaseTool
+from langgraph.graph import START, StateGraph
 from state import AgentsState, log_agent_state
 
 logger = logging.getLogger(__name__)
 
 # Load agent optional tools mapping
-def _load_agent_tools_config(config_path: str) -> dict[str, list[str]]:
+def _load_agent_tools_config(config_path: Path) -> dict[str, list[str]]:
     if not os.path.exists(config_path):
         logger.warning(f"Configuration file {config_path} not found. Proceeding with empty optional tool mappings.")
         return {}
@@ -93,8 +93,9 @@ def router_after_butler(state: AgentsState, config: RunnableConfig) -> str:
 
 # Builds and returns the main graph
 # engine, answer engine
-def build_graph(engine) -> StateGraph:
-    agent_tools_cfg = _load_agent_tools_config("agents_tools.yaml")
+# config_dir, config dir
+def build_graph(engine, config_dir: Path) -> StateGraph:
+    agent_tools_cfg = _load_agent_tools_config(config_dir / "agents_tools.yaml")
 
     # Base tools
     butler_base_tools = ["delegate_to_agent", "turn_on_garden_light", "search_memory_butler", "save_or_update_butler_memory", "discover_and_load_mcp_butler", "read_emails"]

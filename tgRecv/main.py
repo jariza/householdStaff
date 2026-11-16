@@ -1,13 +1,23 @@
 # Telegram interface module
 # Presentation layer for interacting with the Telegram Bot API, handling the specific nuances of the Butler AI backend.
 
-from dotenv import dotenv_values
-import httpx
 import json
 import logging
+import os
 import re
+from pathlib import Path
+
+import httpx
+from dotenv import dotenv_values
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+
 
 # Redact Telegram Bot API tokens in URLs
 class TelegramTokenFilter(logging.Filter):
@@ -19,15 +29,16 @@ class TelegramTokenFilter(logging.Filter):
         return True
 
 # Load and check configuration
-config = dotenv_values(".env")
+CONFIG_DIR = Path(os.getenv("CONFIG_DIR", "config"))
+config = dotenv_values(CONFIG_DIR / ".env")
 
 ALLOWED_USER_ID = int(config.get("ALLOWED_USER_ID"))
-BUTLER_API_URL = config.get("BUTLER_API_URL")
+BUTLER_API_URL = config.get("BUTLER_API_URL", "http://staff:8000/chat")
 LOG_LEVEL = config.get("LOG_LEVEL", "INFO").upper()
 TOKEN = config.get("TELEGRAM_BOT_TOKEN")
 
-if not ALLOWED_USER_ID or not BUTLER_API_URL or not TOKEN:
-    raise RuntimeError("Missing variables in .env file: ALLOWED_USER_ID, BUTLER_API_URL or TELEGRAM_BOT_TOKEN")
+if not ALLOWED_USER_ID or not TOKEN:
+    raise RuntimeError("Missing variables in .env file: ALLOWED_USER_ID or TELEGRAM_BOT_TOKEN")
 
 # Load messages
 with open("messages.json", "r", encoding="utf-8") as f:
@@ -47,26 +58,27 @@ async def get_full_response_from_butler(user_input: str) -> str:
     # Increased timeout in case Butler takes long to answer
     timeout_config = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
 
-    async with httpx.AsyncClient(timeout=timeout_config) as client:
-        async with client.stream("POST", BUTLER_API_URL, json={"user_input": user_input}) as response:
-            
-            response.raise_for_status()
+    async with (
+        httpx.AsyncClient(timeout=timeout_config) as client,
+        client.stream("POST", BUTLER_API_URL, json={"user_input": user_input}) as response,
+    ):
+        response.raise_for_status()
 
-            # Read SSE event line by line.
-            # Events are expected to start with 'data:', ending mark is '[DONE]'
-            async for line in response.aiter_lines():
-                if line.startswith("data: "):
-                    data_payload = line.removeprefix("data: ").strip()
-                    if data_payload == "[DONE]":
-                        break
+        # Read SSE event line by line.
+        # Events are expected to start with 'data:', ending mark is '[DONE]'
+        async for line in response.aiter_lines():
+            if line.startswith("data: "):
+                data_payload = line.removeprefix("data: ").strip()
+                if data_payload == "[DONE]":
+                    break
 
-                    try:
-                        chunk_json = json.loads(data_payload)
-                        if "content" in chunk_json:
-                            accumulated_text.append(chunk_json["content"])
-                    except json.JSONDecodeError:
-                        # We are ignoring empty or invalid lines
-                        continue
+                try:
+                    chunk_json = json.loads(data_payload)
+                    if "content" in chunk_json:
+                        accumulated_text.append(chunk_json["content"])
+                except json.JSONDecodeError:
+                    # We are ignoring empty or invalid lines
+                    continue
 
     return "".join(accumulated_text)
 
@@ -80,7 +92,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Bot answering function
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.debug("Telegram answer:\n{}".format(json.dumps(update.to_dict(), indent=2, ensure_ascii=False)))
+    logger.debug(f"Telegram answer:\n{json.dumps(update.to_dict(), indent=2, ensure_ascii=False)}")
 
     if not update.message or not update.message.text:
         return
@@ -100,7 +112,7 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except httpx.HTTPError as err:
         logger.error(f"Error while trying to connect to Butler: {err}")
         await update.message.reply_text(MESSAGES["http_error"])
-    except Exception as e:
+    except Exception as e: # noqa: BLE001
         logger.error(e)
         await update.message.reply_text(MESSAGES["unexpected"])
 

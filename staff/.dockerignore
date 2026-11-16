@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.dist
+
+venv/
+__pycache__/
+*.py[cod]
+
+.git/
+.pytest_cache/
+.mypy_cache/
+
+config/
+data/
+*.db
